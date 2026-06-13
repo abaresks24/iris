@@ -16,7 +16,7 @@ export default function Landing() {
           className="landing-logo"
         />
         <h1 className="landing-title">
-          <span className="grad">Iris</span>
+          <span className="grad">Iris.finance</span>
         </h1>
         <p className="landing-tagline">
           Options, anywhere. Deposit any token from any chain and earn yield on

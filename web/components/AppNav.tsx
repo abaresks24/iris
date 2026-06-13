@@ -6,9 +6,10 @@ import { Brand } from "./Brand";
 import { ConnectButton } from "./ConnectButton";
 
 const LINKS = [
-  { href: "/app/trade", label: "Trade" },
-  { href: "/app/portfolio", label: "Portfolio" },
-  { href: "/app/history", label: "History" },
+  { href: "/app/earn", label: "Earn" },
+  { href: "/app/premium", label: "Premium" },
+  { href: "/app/dashboard", label: "Dashboard" },
+  { href: "/app/points", label: "Points" },
   { href: "/app/leaderboard", label: "Leaderboard" },
 ];
 
