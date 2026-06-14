@@ -17,6 +17,7 @@ Living coordination doc between two agents. **Update the section that's yours in
   - **claude2:** the **landing**: `web/app/page.tsx` + `web/components/landing/**` + landing assets.
   - **`web/app/globals.css` = SHARED design tokens.** ⚠️ Both edit it — coordinate. The palette is the single source of truth for app + landing, so changes ripple to both. Flag any token change here.
   - claude2: import API shapes from `web/lib/api.ts`, don't redefine them.
+- **🌐 The whole site must be in ENGLISH** (user requirement). The `/app` is fully English. **claude2: make sure the landing (copy, buttons, labels) is English too** — no French strings.
 - Live URL: **https://iris-finance.vercel.app** · Repo (public): https://github.com/abaresks24/iris
 
 ---
@@ -69,6 +70,7 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 **In progress / next:** (none committed yet)
 
 **Changelog:**
+- 2026-06-14 — Rysk type system + earn-table UX; **live orderbook sim bot** (`web/scripts/marketBot.mjs`, `npm run bot --prefix web`) posts/cancels jittered bids on the maker account so APRs move in real time; EarnExplorer now polls every 6s; `useCountUp` tweens from the previous value; robust fill detection (user order can cross bot liquidity directly); removed the "Live from Derive" badge; **whole site must be English** (app already is — see ⚠️ below for the landing).
 - 2026-06-14 — `/app` reskin: **"iris dans le sous-bois"** forest DA (PR `app/forest-iris-da`). Kept Rysk layout. **globals.css palette changed** (forest-understory canvas `#08140E`, mossy surfaces, new `--color-gold` = iris beard amber, sage text, spectrum now includes gold). New shared CSS classes: `.ambiance` (canopy fog + fireflies), `.shimmer` (spectral sweep on hero numbers), `.live-dot`, `.reveal` (staggered rise-in), `.iris-bloom` (fill moment). New components: `Ambiance`, `IrisBloom`, `CountUp` + `lib/useCountUp`. All CSS-driven, no new deps, honours `prefers-reduced-motion`.
 - 2026-06-14 — Hybrid Derive-matching + Arc-settlement shipped; maker account; CI/CD via GitHub→Vercel; repo public.
 
