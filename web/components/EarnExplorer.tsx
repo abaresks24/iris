@@ -6,6 +6,7 @@ import { useQueries } from "@tanstack/react-query";
 import { api, type PresetId } from "@/lib/api";
 import { pct, usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
+import { CountUp } from "./CountUp";
 import { DepositModal } from "./DepositModal";
 
 interface Opp {
@@ -17,6 +18,11 @@ interface Opp {
 
 // Asset × strategy matrix (income presets only — these are what you "earn" on).
 const ASSETS = ["ETH", "BTC", "SOL"];
+const ASSET_COLOR: Record<string, string> = {
+  ETH: "var(--color-accent)", // violet
+  BTC: "var(--color-gold)", // amber
+  SOL: "var(--color-accent-2)", // green
+};
 const STRATS: { preset: PresetId; label: string }[] = [
   { preset: "cash_secured_put", label: "Cash-Secured Put" },
   { preset: "covered_call", label: "Covered Call" },
@@ -103,16 +109,21 @@ export function EarnExplorer() {
 
   return (
     <div>
-      <div className="preset-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`preset-tab ${filter === t.id ? "active" : ""}`}
-            onClick={() => setFilter(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex between" style={{ marginBottom: 10 }}>
+        <div className="preset-tabs" style={{ marginBottom: 0 }}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`preset-tab ${filter === t.id ? "active" : ""}`}
+              onClick={() => setFilter(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <span className="flex small muted" style={{ gap: 7, whiteSpace: "nowrap" }}>
+          <span className="live-dot" /> Live from Derive
+        </span>
       </div>
 
       <div style={{ overflowX: "auto" }}>
@@ -120,38 +131,63 @@ export function EarnExplorer() {
           <thead>
             <tr>
               <th style={{ cursor: "pointer" }} onClick={() => toggleSort("asset")}>Asset{caret("asset")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("type")}>Type{caret("type")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("maxApr")}>Max APR{caret("maxApr")}</th>
-              <th>Min APR</th>
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("type")}>Strategy{caret("type")}</th>
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("maxApr")}>{view[0]?.preset === "long_call" ? "Premium" : "APR"}{caret("maxApr")}</th>
               <th>Capacity</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {view.map((r) => (
+            {view.map((r, i) => (
               <tr
                 key={`${r.currency}-${r.preset}`}
-                style={{ cursor: "pointer" }}
+                className="reveal"
+                style={{ cursor: "pointer", animationDelay: `${i * 45}ms` }}
                 onClick={() => setActive(r)}
               >
-                <td style={{ fontWeight: 600, color: "var(--color-ink)" }}>{r.currency}</td>
+                <td>
+                  <span className="asset-chip">
+                    <span className="tok" style={{ background: ASSET_COLOR[r.currency] ?? "var(--color-accent)" }}>
+                      {r.currency.slice(0, 1)}
+                    </span>
+                    {r.currency}
+                  </span>
+                </td>
                 <td>{r.label}</td>
-                <td style={{ color: "var(--color-accent)", fontWeight: 600 }}>
+                <td>
                   {r.loading ? (
                     <IrisLoader size={14} />
                   ) : r.preset === "long_call" ? (
-                    r.prem != null ? usd(r.prem) : "—"
+                    <span className="apr-range">
+                      <span className="max"><CountUp value={r.prem} format={(n) => usd(n)} /></span>
+                      <span className="min">cost</span>
+                    </span>
                   ) : (
-                    pct(r.maxApr, 1)
+                    <span className="apr-range">
+                      <span className="min">{pct(r.minApr, 1)}</span>
+                      <span className="sep">–</span>
+                      <span className="max"><CountUp value={r.maxApr} format={(n) => pct(n, 1)} /></span>
+                    </span>
                   )}
                 </td>
-                <td>{r.loading ? "" : r.preset === "long_call" ? "premium" : pct(r.minApr, 1)}</td>
                 <td>
                   <div className="flex" style={{ gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 60, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
-                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--color-accent)" }} />
+                    <div style={{ flex: 1, minWidth: 56, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
+                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--spectrum)" }} />
                     </div>
                     <span className="small muted">{r.capPct}%</span>
                   </div>
+                </td>
+                <td className="right">
+                  <button
+                    className="btn sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActive(r);
+                    }}
+                  >
+                    {r.preset === "long_call" ? `Buy ${r.currency}` : `Earn on ${r.currency}`}
+                  </button>
                 </td>
               </tr>
             ))}

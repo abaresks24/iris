@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ paddingTop: 28 }}>
-      <h1 style={{ fontSize: 36, margin: "0 0 6px" }}>Dashboard</h1>
+      <h1 className="title-serif" style={{ fontSize: 40, margin: "0 0 6px" }}>Dashboard</h1>
       <p className="muted" style={{ margin: "0 0 8px" }}>
         Your balance, positions and activity on Derive.
       </p>
