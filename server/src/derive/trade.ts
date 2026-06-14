@@ -82,7 +82,7 @@ export async function placeStrategyOrder(req: TradeRequest): Promise<TradeResult
     time_in_force: "gtc",
     mmp: false,
     subaccount_id: config.subaccountId,
-    nonce: signed.nonce,
+    nonce: Number(signed.nonce),
     signer: signed.signer,
     signature_expiry_sec: signed.signatureExpirySec,
     signature: signed.signature,

@@ -123,7 +123,7 @@ export interface PlaceOrderBody {
   time_in_force: "gtc" | "ioc" | "fok" | "post_only";
   mmp: boolean;
   subaccount_id: number;
-  nonce: string;
+  nonce: number;
   signer: string;
   signature_expiry_sec: number;
   signature: string;
