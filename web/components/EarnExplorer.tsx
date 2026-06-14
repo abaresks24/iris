@@ -57,7 +57,10 @@ export function EarnExplorer() {
     queries: OPPS.map((o) => ({
       queryKey: ["strategies", o.preset, o.currency, 1],
       queryFn: () => api.strategies(o.preset, o.currency, 1),
-      staleTime: 30_000,
+      // Poll the live orderbook so APRs visibly move (the market-maker sim).
+      staleTime: 3_000,
+      refetchInterval: 6_000,
+      refetchIntervalInBackground: false,
     })),
   });
 
@@ -109,21 +112,16 @@ export function EarnExplorer() {
 
   return (
     <div>
-      <div className="flex between" style={{ marginBottom: 10 }}>
-        <div className="preset-tabs" style={{ marginBottom: 0 }}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={`preset-tab ${filter === t.id ? "active" : ""}`}
-              onClick={() => setFilter(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <span className="flex small muted" style={{ gap: 7, whiteSpace: "nowrap" }}>
-          <span className="live-dot" /> Live from Derive
-        </span>
+      <div className="preset-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`preset-tab ${filter === t.id ? "active" : ""}`}
+            onClick={() => setFilter(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ overflowX: "auto" }}>

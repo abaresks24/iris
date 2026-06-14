@@ -145,13 +145,17 @@ export async function placeStrategyOrder(req: TradeRequest): Promise<TradeResult
     },
   );
 
-  // 2. If a maker (liquidity) account is configured, immediately cross the
-  //    user's resting order with the OPPOSITE side as an IOC taker, so it fills
-  //    instantly. Best-effort: a maker failure must not fail the user's order.
+  // The user order may cross resting liquidity (e.g. the market-maker bot's
+  // quotes) immediately — in which case its own response carries the trades.
+  const userResp = order as { trades?: Array<{ trade_id?: string }> } | undefined;
+  let filled = Array.isArray(userResp?.trades) && userResp.trades.length > 0;
+  let tradeId: string | undefined = userResp?.trades?.[0]?.trade_id;
+
+  // 2. If not already filled and a maker (liquidity) account is configured,
+  //    cross the user's resting order with the OPPOSITE side as an IOC taker so
+  //    it fills instantly. Best-effort: a maker failure must not fail the trade.
   let makerOrder: unknown;
-  let filled = false;
-  let tradeId: string | undefined;
-  if (config.makerEnabled) {
+  if (!filled && config.makerEnabled) {
     try {
       const res = await signAndPlaceOrder(config.maker, {
         ticker,
@@ -166,8 +170,10 @@ export async function placeStrategyOrder(req: TradeRequest): Promise<TradeResult
       const mo = res.order as
         | { trades?: Array<{ trade_id?: string }> }
         | undefined;
-      filled = Array.isArray(mo?.trades) && mo.trades.length > 0;
-      tradeId = mo?.trades?.[0]?.trade_id;
+      if (Array.isArray(mo?.trades) && mo.trades.length > 0) {
+        filled = true;
+        tradeId = mo.trades[0]?.trade_id;
+      }
     } catch (e) {
       makerOrder = { error: e instanceof Error ? e.message : String(e) };
     }
