@@ -42,10 +42,10 @@
   --radius:    14px;
   --radius-lg: 20px;
 
-  /* Polices */
-  --font-sans: var(--font-geist-sans), "Inter Tight", system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: var(--font-display), var(--font-geist-sans), system-ui, sans-serif;
+  /* Polices — Rysk type system (DM Sans / DM Mono / Bodoni Moda serif) */
+  --font-sans: var(--font-sans-src), "DM Sans", system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), "DM Mono", ui-monospace, monospace;
+  --font-display: var(--font-display), "Bodoni Moda", Georgia, serif;
 }
 
 :root {
@@ -299,7 +299,7 @@ a:hover { color: var(--color-accent); }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--color-hairline); }
 .table th { color: var(--color-graphite); font-family: var(--font-mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-.table td { color: var(--color-bone); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.table td { color: var(--color-bone); font-variant-numeric: tabular-nums; }
 .table tbody tr { transition: background var(--dur-fast) var(--ease-iris); }
 .table tbody tr:hover td { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
 .table tbody tr:hover td:first-child { box-shadow: inset 2px 0 0 var(--color-accent); }
@@ -383,3 +383,29 @@ a:hover { color: var(--color-accent); }
   .reveal { opacity: 1; animation: none; }
   .iris-bloom svg, .iris-bloom .ripple { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   RYSK TYPE & UX ADOPTION — elegant serif display + earn-table patterns
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Serif display only on LARGE headings (Bodoni is high-contrast; small sizes
+   stay in DM Sans for legibility). */
+.display, .h1, .prose h1, .landing-title, .title-serif {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.hero-num { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+
+/* Asset chip — colored token dot + ticker */
+.asset-chip { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: var(--color-bone); }
+.asset-chip .tok { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-family: var(--font-mono); color: #08140E; flex: none; }
+
+/* APR range cell (Rysk min–max) */
+.apr-range { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.apr-range .max { color: var(--color-accent); font-weight: 600; font-size: 15px; }
+.apr-range .sep { color: var(--color-muted); }
+.apr-range .min { color: var(--color-graphite); font-size: 12.5px; }
+
+/* Small per-row action button (Rysk "Earn on X") */
+.btn.sm { padding: 7px 15px; font-size: 13px; border-radius: var(--radius-sm); }

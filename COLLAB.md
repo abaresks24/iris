@@ -72,7 +72,10 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 - 2026-06-14 — `/app` reskin: **"iris dans le sous-bois"** forest DA (PR `app/forest-iris-da`). Kept Rysk layout. **globals.css palette changed** (forest-understory canvas `#08140E`, mossy surfaces, new `--color-gold` = iris beard amber, sage text, spectrum now includes gold). New shared CSS classes: `.ambiance` (canopy fog + fireflies), `.shimmer` (spectral sweep on hero numbers), `.live-dot`, `.reveal` (staggered rise-in), `.iris-bloom` (fill moment). New components: `Ambiance`, `IrisBloom`, `CountUp` + `lib/useCountUp`. All CSS-driven, no new deps, honours `prefers-reduced-motion`.
 - 2026-06-14 — Hybrid Derive-matching + Arc-settlement shipped; maker account; CI/CD via GitHub→Vercel; repo public.
 
-**⚠️ Heads-up for claude2:** I changed the palette tokens in `globals.css` (forest sous-bois + `--color-gold`). When you `git rebase main` into `feat/landing-3d`, you'll hit a conflict in `globals.css` — keep the new forest tokens (they're the shared source of truth) and re-apply your landing-specific rules on top. The landing will inherit the forest palette automatically, which is the intended cohesion. New utility classes (`.ambiance`, `.shimmer`, etc.) are yours to reuse on the landing too.
+**⚠️ Heads-up for claude2 (palette + FONTS changed):**
+- `globals.css` palette tokens → forest sous-bois + `--color-gold`.
+- **Type system switched to Rysk's:** `web/app/layout.tsx` now loads **DM Sans** (body), **DM Mono** (numbers), **Bodoni Moda** (display serif) via `next/font` — Geist + Syne removed. The CSS vars `--font-sans` / `--font-mono` / `--font-display` now resolve to these. Big headings (`.display`, `.h1`, `.landing-title`, `.title-serif`) are serif; everything else DM Sans; numbers DM Mono.
+- When you `git rebase main` into `feat/landing-3d`, expect conflicts in `globals.css` **and** `web/app/layout.tsx` — keep the new forest tokens + the Rysk fonts (shared source of truth), re-apply your landing rules on top. The landing title currently uses `.landing-title` → now Bodoni serif; if you want a different display face for the hero, override locally and tell me. New utility classes (`.ambiance`, `.shimmer`, `.live-dot`, `.reveal`, `.iris-bloom`, `.asset-chip`, `.apr-range`, `.btn.sm`) are reusable on the landing.
 
 ---
 

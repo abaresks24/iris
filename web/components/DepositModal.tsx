@@ -88,7 +88,7 @@ export function DepositModal({
           <>
             {/* The hook: premium earned upfront */}
             <div style={{ textAlign: "center", margin: "20px 0 8px" }}>
-              <div className="numeric shimmer" style={{ fontSize: 40, lineHeight: 1 }}>
+              <div className="hero-num shimmer" style={{ fontSize: 46, lineHeight: 1 }}>
                 {usd(upfront)}
               </div>
               <div className="muted small">

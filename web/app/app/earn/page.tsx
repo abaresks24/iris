@@ -3,7 +3,7 @@ import { EarnExplorer } from "@/components/EarnExplorer";
 export default function EarnPage() {
   return (
     <div style={{ paddingTop: 28 }}>
-      <h1 style={{ fontSize: 42, margin: "0 0 6px" }}>Earn upfront on your crypto</h1>
+      <h1 className="title-serif" style={{ fontSize: 46, margin: "0 0 6px" }}>Earn upfront on your crypto</h1>
       <p className="muted" style={{ margin: "0 0 4px", maxWidth: 620 }}>
         Deposit and collect the premium immediately. Every strategy is fully
         collateralised on Derive — no margin, no liquidations.
