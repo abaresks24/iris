@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { api } from "@/lib/api";
-import { usd } from "@/lib/format";
+import { usd, num, days } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { TokenIcon } from "./TokenIcon";
 
@@ -32,7 +32,9 @@ export function PositionsPanel() {
 
   const positions = data?.positions ?? [];
   const totalPremium = data?.premiumTotal ?? 0;
-  const lockedTotal = positions.reduce((s, p) => s + (p.collateral || 0), 0);
+  const nowSec = Date.now() / 1000;
+  const upcoming = positions.filter((p) => p.expiry > nowSec).map((p) => (p.expiry - nowSec) / 86400);
+  const nextDays = upcoming.length ? Math.min(...upcoming) : null;
 
   return (
     <div>
@@ -46,8 +48,8 @@ export function PositionsPanel() {
           <div className="l">premium collected</div>
         </div>
         <div className="kpi panel">
-          <div className="v">{usd(lockedTotal)}</div>
-          <div className="l">collateral locked</div>
+          <div className="v">{nextDays != null ? days(nextDays) : "—"}</div>
+          <div className="l">next expiry</div>
         </div>
       </div>
 
@@ -63,7 +65,9 @@ export function PositionsPanel() {
                   <b>{p.label}</b>
                   <div className="muted small">
                     {p.kind} · strike {usd(p.strike)} · size {p.size}
-                    {p.collateral ? ` · ${usd(p.collateral)} locked` : ""}
+                    {p.collateral != null
+                      ? ` · ${p.collateralAsset === "USDC" ? usd(p.collateral) : `${num(p.collateral)} ${p.collateralAsset}`} locked`
+                      : ""}
                   </div>
                 </div>
               </div>
