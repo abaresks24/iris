@@ -10,7 +10,6 @@
  * 957 we fall back to Optimism USDC and surface hop 2 as the native-bridge step.
  */
 import { createConfig, getQuote, type QuoteRequest } from "@lifi/sdk";
-import { DERIVE_CHAIN_ID } from "./chains";
 
 let configured = false;
 function ensureConfig() {
@@ -69,10 +68,7 @@ export async function getFundingQuote(params: {
   ).toString();
 
   async function quoteTo(toChainId: number): Promise<FundingQuote> {
-    const toToken =
-      toChainId === DERIVE_CHAIN_ID
-        ? (process.env.NEXT_PUBLIC_DERIVE_USDC as string) || USDC[10]
-        : USDC[toChainId];
+    const toToken = USDC[toChainId];
 
     const req: QuoteRequest = {
       fromChain: params.fromChainId,
@@ -94,8 +90,7 @@ export async function getFundingQuote(params: {
     );
     return {
       toChainId,
-      toChainLabel:
-        toChainId === DERIVE_CHAIN_ID ? "Derive Chain" : CHAIN_LABEL[toChainId],
+      toChainLabel: CHAIN_LABEL[toChainId],
       toTokenSymbol: q.action.toToken.symbol,
       fromAmountUsd: est.fromAmountUSD ?? params.amountUsdc,
       toAmount: (Number(est.toAmount) / 1e6).toFixed(2),
@@ -103,15 +98,13 @@ export async function getFundingQuote(params: {
       feeCostUsd: feeUsd.toFixed(2),
       durationSec: est.executionDuration ?? 0,
       steps: [q.toolDetails?.name ? `Bridge via ${q.toolDetails.name}` : "Bridge"],
-      needsNativeBridge: toChainId !== DERIVE_CHAIN_ID,
+      needsNativeBridge: false,
       transactionRequest: q.transactionRequest,
     };
   }
 
-  // Try straight to Derive Chain, fall back to Optimism USDC + native bridge hop.
-  try {
-    return await quoteTo(DERIVE_CHAIN_ID);
-  } catch {
-    return await quoteTo(10);
-  }
+  // Consolidate into USDC on a major L2 via a real LI.FI route. Default to Base;
+  // if the source already is Base, route to Arbitrum so it's a real cross-chain hop.
+  const dest = params.fromChainId === 8453 ? 42161 : 8453;
+  return await quoteTo(dest);
 }

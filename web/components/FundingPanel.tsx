@@ -68,8 +68,8 @@ export function FundingPanel() {
     <div className="panel">
       <h2>Fund from anywhere</h2>
       <p className="sub">
-        Any token, any chain → USDC ready to trade on Derive. Powered by LI.FI +
-        Privy, settled through the Arc USDC hub.
+        Any token, any chain → USDC in one transaction. Powered by LI.FI — a real
+        cross-chain route with fees and time shown before you sign.
       </p>
 
       {!authenticated ? (
