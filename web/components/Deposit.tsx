@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useAccount, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
 import { arcTestnet, VAULT_ADDRESS, USDC_ADDRESS, USDC_ABI, toUsdc6 } from "@/lib/arc/vault";
@@ -57,7 +58,7 @@ export function Deposit({ variant = "btn" }: { variant?: "btn" | "btn secondary"
       <button className={variant} onClick={() => { setOpen(true); setDone(false); setErr(""); }}>
         Deposit
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div className="modal-overlay" onClick={() => setOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <h3>Deposit to trade</h3>
@@ -79,7 +80,8 @@ export function Deposit({ variant = "btn" }: { variant?: "btn" | "btn secondary"
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
