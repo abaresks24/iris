@@ -5,7 +5,7 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "wagmi";
-import { arbitrum, base, mainnet, optimism } from "viem/chains";
+import { sepolia, baseSepolia, arbitrumSepolia } from "viem/chains";
 import { arcTestnet } from "@/lib/protocol/arc";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "";
@@ -14,13 +14,12 @@ const FundingContext = createContext({ privyEnabled: false });
 export const useFunding = () => useContext(FundingContext);
 
 const wagmiConfig = createConfig({
-  chains: [arcTestnet, arbitrum, optimism, base, mainnet],
+  chains: [arcTestnet, baseSepolia, arbitrumSepolia, sepolia],
   transports: {
     [arcTestnet.id]: http(),
-    [arbitrum.id]: http(),
-    [optimism.id]: http(),
-    [base.id]: http(),
-    [mainnet.id]: http(),
+    [baseSepolia.id]: http(),
+    [arbitrumSepolia.id]: http(),
+    [sepolia.id]: http(),
   },
 });
 
@@ -50,7 +49,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           appearance: { theme: "dark", accentColor: "#9D5BFF" },
           embeddedWallets: { createOnLogin: "users-without-wallets" },
           defaultChain: arcTestnet,
-          supportedChains: [arcTestnet, arbitrum, optimism, base, mainnet],
+          supportedChains: [arcTestnet, baseSepolia, arbitrumSepolia, sepolia],
         }}
       >
         <QueryClientProvider client={queryClient}>

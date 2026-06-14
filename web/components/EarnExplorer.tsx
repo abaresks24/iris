@@ -1,161 +1,93 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueries } from "@tanstack/react-query";
-import { api, type PresetId } from "@/lib/api";
-import { pct } from "@/lib/format";
+import { useIris } from "@/lib/protocol/useIris";
+import { usd, pct } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { DepositModal } from "./DepositModal";
 
 interface Opp {
-  currency: string;
-  preset: PresetId;
+  kind: "put" | "call";
   label: string;
-  capPct: number;
+  tagline: string;
+  apr: number | null;
 }
 
-// Asset × strategy matrix (income presets only — these are what you "earn" on).
-const ASSETS = ["ETH", "BTC", "SOL"];
-const STRATS: { preset: PresetId; label: string }[] = [
-  { preset: "cash_secured_put", label: "Cash-Secured Put" },
-  { preset: "covered_call", label: "Covered Call" },
-];
-const CAP: Record<string, number> = {
-  "ETH-cash_secured_put": 38, "BTC-cash_secured_put": 61, "SOL-cash_secured_put": 19,
-  "ETH-covered_call": 24, "BTC-covered_call": 47, "SOL-covered_call": 12,
-};
-
-const OPPS: Opp[] = ASSETS.flatMap((currency) =>
-  STRATS.map((s) => ({
-    currency,
-    preset: s.preset,
-    label: s.label,
-    capPct: CAP[`${currency}-${s.preset}`] ?? 30,
-  })),
-);
-
-type Filter = "all" | "cash_secured_put" | "covered_call";
-type SortKey = "asset" | "type" | "maxApr";
-
 export function EarnExplorer() {
+  const iris = useIris();
   const router = useRouter();
-  const [active, setActive] = useState<Opp | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("maxApr");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [spot, setSpot] = useState<number | null>(null);
+  const [opps, setOpps] = useState<Opp[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState<"put" | "call" | null>(null);
 
-  const results = useQueries({
-    queries: OPPS.map((o) => ({
-      queryKey: ["strategies", o.preset, o.currency, 1],
-      queryFn: () => api.strategies(o.preset, o.currency, 1),
-      staleTime: 30_000,
-    })),
-  });
-
-  const rows = useMemo(() => {
-    return OPPS.map((o, i) => {
-      const r = results[i];
-      const aprs = (r.data?.candidates ?? []).map((c) => c.aprPct ?? 0).filter((a) => a > 0);
-      return {
-        ...o,
-        loading: r.isLoading,
-        maxApr: aprs.length ? Math.max(...aprs) : null,
-        minApr: aprs.length ? Math.min(...aprs) : null,
-      };
-    });
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const s = await iris.getSpotUsd();
+        const expiry = Math.floor(Date.now() / 1000) + 30 * 86400;
+        const round = (n: number) => Math.max(1, Math.round(n / 50) * 50);
+        const [putQ, callQ] = await Promise.all([
+          iris.quotePut(round(s * 0.9), 1, expiry),
+          iris.quoteCall(1, expiry),
+        ]);
+        if (cancel) return;
+        setSpot(s);
+        setOpps([
+          { kind: "put", label: "Cash-Secured Put", tagline: "Deposit USDC, earn yield. Worst case: buy ETH cheaper.", apr: putQ.aprPct },
+          { kind: "call", label: "Covered Call", tagline: "Hold ETH, earn extra yield on top.", apr: callQ.aprPct },
+        ]);
+      } catch {
+        if (!cancel) setOpps([]);
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [results.map((r) => r.dataUpdatedAt).join(",")]);
+  }, []);
 
-  const view = useMemo(() => {
-    let r = rows.filter((x) => (filter === "all" ? true : x.preset === filter));
-    const dir = sortDir === "asc" ? 1 : -1;
-    r = [...r].sort((a, b) => {
-      if (sortKey === "asset") return a.currency.localeCompare(b.currency) * dir;
-      if (sortKey === "type") return a.label.localeCompare(b.label) * dir;
-      // maxApr — nulls always last
-      const av = a.maxApr ?? -1;
-      const bv = b.maxApr ?? -1;
-      return (av - bv) * dir;
-    });
-    return r;
-  }, [rows, filter, sortKey, sortDir]);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(key);
-      setSortDir(key === "maxApr" ? "desc" : "asc");
-    }
+  if (loading) {
+    return (
+      <div className="notice">
+        <IrisLoader /> Loading live ETH options from Arc…
+      </div>
+    );
   }
-  const caret = (key: SortKey) => (sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : "");
-
-  const TABS: { id: Filter; label: string }[] = [
-    { id: "all", label: "All" },
-    { id: "cash_secured_put", label: "Cash-Secured Puts" },
-    { id: "covered_call", label: "Covered Calls" },
-  ];
 
   return (
     <div>
-      <div className="preset-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`preset-tab ${filter === t.id ? "active" : ""}`}
-            onClick={() => setFilter(t.id)}
-          >
-            {t.label}
-          </button>
+      {spot != null && (
+        <p className="muted small" style={{ margin: "0 0 16px" }}>
+          ETH spot <span className="numeric">{usd(spot)}</span> · 30-day term · live on Arc
+        </p>
+      )}
+      <div className="grid cols-2">
+        {opps.map((o) => (
+          <div key={o.kind} className="card" onClick={() => setActive(o.kind)}>
+            <div className="flex between">
+              <div className="strike">Earn on ETH</div>
+              <span className="badge">{o.label}</span>
+            </div>
+            <div className="apr numeric">
+              {pct(o.apr)} <small>APR</small>
+            </div>
+            <div className="summary">{o.tagline}</div>
+            <div className="muted small">
+              {o.kind === "put" ? "collateral: USDC" : "collateral: ETH (WETH)"}
+            </div>
+          </div>
         ))}
       </div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("asset")}>Asset{caret("asset")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("type")}>Type{caret("type")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("maxApr")}>Max APR{caret("maxApr")}</th>
-              <th>Min APR</th>
-              <th>Capacity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.map((r) => (
-              <tr
-                key={`${r.currency}-${r.preset}`}
-                style={{ cursor: "pointer" }}
-                onClick={() => setActive(r)}
-              >
-                <td style={{ fontWeight: 600, color: "var(--color-ink)" }}>{r.currency}</td>
-                <td>{r.label}</td>
-                <td style={{ color: "var(--color-accent)", fontWeight: 600 }}>
-                  {r.loading ? <IrisLoader size={14} /> : pct(r.maxApr, 1)}
-                </td>
-                <td>{r.loading ? "" : pct(r.minApr, 1)}</td>
-                <td>
-                  <div className="flex" style={{ gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 60, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
-                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--color-accent)" }} />
-                    </div>
-                    <span className="small muted">{r.capPct}%</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {view.length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ textAlign: "center", padding: 24 }}>No opportunities.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {active && (
+      {active && spot != null && (
         <DepositModal
-          currency={active.currency}
-          preset={active.preset}
-          label={active.label}
+          kind={active}
+          spotUsd={spot}
           onClose={() => setActive(null)}
           onDone={() => {
             setActive(null);
