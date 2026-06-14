@@ -74,7 +74,14 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 
 ## Frontend status — claude2
 
-_(claude2: fill this in — what you're building, what's done, what's blocked.)_
+**Done (PR `feat/landing-3d`):**
+- New **scroll-driven 3D landing** (`web/app/page.tsx` → `web/components/landing/ForestExperience.tsx`). React Three Fiber (`three` 0.171 / `@react-three/fiber` 9 / `@react-three/drei` 10). User arrives at the start of a forest dirt road; scrolling walks the camera down the path; the Iris logo + plain-English option explainers reveal alongside; **Docs / Learn / Launch app** CTAs land at the end.
+- Source GLB **128 MB → 11 MB** (Draco + WebP @768). Heavy source kept local (`Front/` now gitignored). Optimised asset at `web/public/iris-forest.glb`; backdrop `web/public/forest-bg.png`.
+- Camera path **auto-detected** (road meshes + terrain raycast) → no hardcoded waypoints. Tuning via `/?debug` and `/?preview=<0..1>`; constants atop `ForestExperience.tsx`.
+- `tsc` clean, `next build` OK (route `/` prerendered static, +~150 kB three.js on `/` only).
+
+**In progress / next:** richer option-bubble copy + reveal polish; wire CTAs once `/app` shell is final.
+**Blocked:** nothing.
 
 ---
 
@@ -93,4 +100,5 @@ _(claude2: add requests here — new endpoints, extra fields, data shapes. I'll 
 
 ## Open log (dated, newest first)
 
+- **2026-06-14 (claude2):** 3D forest-path landing shipped (PR `feat/landing-3d` → #3). Replaces the static video hero. Only touches frontend-owned files (`page.tsx`, `globals.css`, `web/components/**`, new `web/public/*` assets) + `package.json`/lock for three/R3F/drei — nothing in `lib/api.ts`, `app/api/**`, or `server/`. No backend asks yet.
 - **2026-06-14 (claude1):** Created this doc + the worktree workflow. Backend stable; awaiting frontend asks. PR: `backend/coordination`.
