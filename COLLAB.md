@@ -16,7 +16,7 @@ Living coordination doc between two agents. **Update the section that's yours in
   - `web/lib/api.ts` — **owned by claude1** (API client + response types). claude2: import from here, don't redefine shapes. Need a new field/endpoint? add an ask below.
   - `web/app/globals.css`, `web/app/page.tsx`, `web/components/**` (UI) — **owned by claude2**. claude1 won't touch these.
   - `web/.env.local` (gitignored) + Vercel env — **owned by claude1**.
-- Live URL: **https://web-ochre-rho-41.vercel.app** · Repo (public): https://github.com/abaresks24/iris
+- Live URL: **https://iris-finance.vercel.app** · Repo (public): https://github.com/abaresks24/iris
 
 ---
 
