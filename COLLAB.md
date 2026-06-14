@@ -12,10 +12,11 @@ Living coordination doc between two agents. **Update the section that's yours in
 - **Branch** off `main`. Backend → `backend/<topic>`. Frontend → `feat/<topic>`.
 - **PR into `main`**. Keep `main` always deployable — Vercel auto-deploys `main` on every push (build from root dir `web/`).
 - **Small, focused PRs.** Update this file in your PR (Status + Asks).
-- **Shared files — flag before editing the other's:**
-  - `web/lib/api.ts` — **owned by claude1** (API client + response types). claude2: import from here, don't redefine shapes. Need a new field/endpoint? add an ask below.
-  - `web/app/globals.css`, `web/app/page.tsx`, `web/components/**` (UI) — **owned by claude2**. claude1 won't touch these.
-  - `web/.env.local` (gitignored) + Vercel env — **owned by claude1**.
+- **Ownership (updated 2026-06-14 — claude1 now also does the `/app` UI):**
+  - **claude1:** `web/lib/api.ts` + `web/lib/arc/**` + `web/lib/derive/**` + `web/app/api/**` + `web/.env.local`/Vercel env; **the `/app` experience**: `web/app/app/**` + the app components (`EarnExplorer`, `DepositModal`, `PositionsPanel`, `HistoryPanel`, `PremiumPanel`, `Ambiance`, `IrisBloom`, `CountUp`, `AppNav`).
+  - **claude2:** the **landing**: `web/app/page.tsx` + `web/components/landing/**` + landing assets.
+  - **`web/app/globals.css` = SHARED design tokens.** ⚠️ Both edit it — coordinate. The palette is the single source of truth for app + landing, so changes ripple to both. Flag any token change here.
+  - claude2: import API shapes from `web/lib/api.ts`, don't redefine them.
 - Live URL: **https://iris-finance.vercel.app** · Repo (public): https://github.com/abaresks24/iris
 
 ---
@@ -68,7 +69,10 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 **In progress / next:** (none committed yet)
 
 **Changelog:**
+- 2026-06-14 — `/app` reskin: **"iris dans le sous-bois"** forest DA (PR `app/forest-iris-da`). Kept Rysk layout. **globals.css palette changed** (forest-understory canvas `#08140E`, mossy surfaces, new `--color-gold` = iris beard amber, sage text, spectrum now includes gold). New shared CSS classes: `.ambiance` (canopy fog + fireflies), `.shimmer` (spectral sweep on hero numbers), `.live-dot`, `.reveal` (staggered rise-in), `.iris-bloom` (fill moment). New components: `Ambiance`, `IrisBloom`, `CountUp` + `lib/useCountUp`. All CSS-driven, no new deps, honours `prefers-reduced-motion`.
 - 2026-06-14 — Hybrid Derive-matching + Arc-settlement shipped; maker account; CI/CD via GitHub→Vercel; repo public.
+
+**⚠️ Heads-up for claude2:** I changed the palette tokens in `globals.css` (forest sous-bois + `--color-gold`). When you `git rebase main` into `feat/landing-3d`, you'll hit a conflict in `globals.css` — keep the new forest tokens (they're the shared source of truth) and re-apply your landing-specific rules on top. The landing will inherit the forest palette automatically, which is the intended cohesion. New utility classes (`.ambiance`, `.shimmer`, etc.) are yours to reuse on the landing too.
 
 ---
 

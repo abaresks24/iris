@@ -6,6 +6,7 @@ import { useQueries } from "@tanstack/react-query";
 import { api, type PresetId } from "@/lib/api";
 import { pct, usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
+import { CountUp } from "./CountUp";
 import { DepositModal } from "./DepositModal";
 
 interface Opp {
@@ -103,16 +104,21 @@ export function EarnExplorer() {
 
   return (
     <div>
-      <div className="preset-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`preset-tab ${filter === t.id ? "active" : ""}`}
-            onClick={() => setFilter(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex between" style={{ marginBottom: 10 }}>
+        <div className="preset-tabs" style={{ marginBottom: 0 }}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`preset-tab ${filter === t.id ? "active" : ""}`}
+              onClick={() => setFilter(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <span className="flex small muted" style={{ gap: 7, whiteSpace: "nowrap" }}>
+          <span className="live-dot" /> Live from Derive
+        </span>
       </div>
 
       <div style={{ overflowX: "auto" }}>
@@ -127,28 +133,29 @@ export function EarnExplorer() {
             </tr>
           </thead>
           <tbody>
-            {view.map((r) => (
+            {view.map((r, i) => (
               <tr
                 key={`${r.currency}-${r.preset}`}
-                style={{ cursor: "pointer" }}
+                className="reveal"
+                style={{ cursor: "pointer", animationDelay: `${i * 45}ms` }}
                 onClick={() => setActive(r)}
               >
-                <td style={{ fontWeight: 600, color: "var(--color-ink)" }}>{r.currency}</td>
+                <td style={{ fontWeight: 600, color: "var(--color-bone)" }}>{r.currency}</td>
                 <td>{r.label}</td>
                 <td style={{ color: "var(--color-accent)", fontWeight: 600 }}>
                   {r.loading ? (
                     <IrisLoader size={14} />
                   ) : r.preset === "long_call" ? (
-                    r.prem != null ? usd(r.prem) : "—"
+                    <CountUp value={r.prem} format={(n) => usd(n)} />
                   ) : (
-                    pct(r.maxApr, 1)
+                    <CountUp value={r.maxApr} format={(n) => pct(n, 1)} />
                   )}
                 </td>
                 <td>{r.loading ? "" : r.preset === "long_call" ? "premium" : pct(r.minApr, 1)}</td>
                 <td>
                   <div className="flex" style={{ gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 60, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
-                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--color-accent)" }} />
+                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--spectrum)" }} />
                     </div>
                     <span className="small muted">{r.capPct}%</span>
                   </div>

@@ -6,6 +6,7 @@ import { useWallets } from "@privy-io/react-auth";
 import { api, type ArcSettlement, type Economics, type PresetId } from "@/lib/api";
 import { usd, num, pct, days } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
+import { IrisBloom } from "./IrisBloom";
 
 /**
  * Rysk-style "earn upfront" deposit flow. Asset + strategy come in; the strike
@@ -87,7 +88,7 @@ export function DepositModal({
           <>
             {/* The hook: premium earned upfront */}
             <div style={{ textAlign: "center", margin: "20px 0 8px" }}>
-              <div className="numeric" style={{ fontSize: 40, color: "var(--color-accent)", lineHeight: 1 }}>
+              <div className="numeric shimmer" style={{ fontSize: 40, lineHeight: 1 }}>
                 {usd(upfront)}
               </div>
               <div className="muted small">
@@ -160,7 +161,8 @@ export function DepositModal({
 
             {status === "done" ? (
               <>
-                <p className="ok small">✓ {isBuy ? "Bought" : "Earning"} on Derive · matched & filled <span className="mono">{message}</span></p>
+                <IrisBloom />
+                <p className="ok small" style={{ textAlign: "center" }}>✓ {isBuy ? "Bought" : "Earning"} on Derive · matched & filled <span className="mono">{message}</span></p>
                 {arc ? (
                   <p className="ok small" style={{ marginTop: 6 }}>
                     ⛓ Settled on-chain on Arc ·{" "}
