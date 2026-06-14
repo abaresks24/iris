@@ -120,6 +120,7 @@ export interface PositionView {
   size: number;
   premium: number;
   collateral: number | null;
+  collateralAsset: string | null;
   time: number;
   expiry: number;
   real: boolean;

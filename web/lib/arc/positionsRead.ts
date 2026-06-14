@@ -15,7 +15,8 @@ export interface PositionView {
   strike: number;
   size: number;
   premium: number; // USDC
-  collateral: number | null; // USDC locked (vault only)
+  collateral: number | null; // amount locked, in collateralAsset units (vault only)
+  collateralAsset: string | null; // "USDC" (put) or the underlying (call)
   time: number; // unix seconds
   expiry: number;
   real: boolean; // true = user funds actually moved on-chain
@@ -34,14 +35,19 @@ async function readVaultPositions(trader: string): Promise<PositionView[]> {
       string, number, number, bigint, bigint, bigint, bigint, bigint, bigint, boolean,
     ];
     if (p[0].toLowerCase() !== trader.toLowerCase()) continue;
+    const asset = ASSET_BY_MARKET[p[2]] ?? `M${p[2]}`;
+    const isCoveredCall = p[1] === 1;
     out.push({
       source: "vault",
-      asset: ASSET_BY_MARKET[p[2]] ?? `M${p[2]}`,
-      label: ASSET_BY_MARKET[p[2]] ?? `M${p[2]}`,
+      asset,
+      label: asset,
       kind: KIND_BY_ENUM[p[1]] ?? `Kind ${p[1]}`,
       strike: Number(p[3]) / 1e8,
       size: Number(p[4]) / 1e18,
-      collateral: Number(p[5]) / 1e6,
+      // CSP collateral is USDC (6 dec); covered-call collateral is the
+      // underlying (18 dec).
+      collateral: isCoveredCall ? Number(p[5]) / 1e18 : Number(p[5]) / 1e6,
+      collateralAsset: isCoveredCall ? asset : "USDC",
       premium: Number(p[6]) / 1e6,
       time: Number(p[7]),
       expiry: Number(p[8]),
@@ -70,6 +76,7 @@ export async function getAllPositions(trader: string): Promise<{
     size: p.size,
     premium: p.premium,
     collateral: null,
+    collateralAsset: null,
     time: p.recordedAt,
     expiry: p.expiry,
     real: false,
