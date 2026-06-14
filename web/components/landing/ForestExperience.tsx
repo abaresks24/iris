@@ -533,7 +533,10 @@ function Overlay() {
             </section>
           );
         return (
-          <section key={i} className="fl-bubble">
+          <section
+            key={i}
+            className={`fl-bubble ${parseInt(step.n, 10) % 2 ? "right" : "left"}`}
+          >
             <div className="fl-sticky">
               <div className="fl-card">
                 <span className="fl-tag">

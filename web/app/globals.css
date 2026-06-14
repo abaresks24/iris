@@ -349,9 +349,11 @@ a:hover { color: var(--color-accent); }
 }
 .fl-sticky {
   position: sticky; top: 0; height: 100vh;
-  display: flex; align-items: center; justify-content: flex-end;
+  display: flex; align-items: center;
   padding: 0 7vw;
 }
+.fl-bubble.right .fl-sticky { justify-content: flex-end; }
+.fl-bubble.left  .fl-sticky { justify-content: flex-start; }
 .fl-card {
   max-width: 470px; text-align: left; padding: 30px 34px 34px;
   background: #1e2222;
@@ -397,6 +399,7 @@ a:hover { color: var(--color-accent); }
     animation-timeline: --bub;
     animation-range: cover 5% cover 95%;
   }
+  .fl-bubble.left .fl-card { animation-name: fl-bubble-io-l; }
   .fl-cta > *, .fl-intro > * {
     opacity: 0; transform: translateY(36px);
     animation: fl-reveal linear both;
@@ -404,11 +407,19 @@ a:hover { color: var(--color-accent); }
     animation-range: entry 6% cover 42%;
   }
 }
+/* droite : entre par la droite, sort par la gauche */
 @keyframes fl-bubble-io {
   0%   { opacity: 0; transform: translateX(44px); }
   15%  { opacity: 1; transform: none; }
   80%  { opacity: 1; transform: none; }
   100% { opacity: 0; transform: translateX(-22px) translateY(-12px); }
+}
+/* gauche : miroir */
+@keyframes fl-bubble-io-l {
+  0%   { opacity: 0; transform: translateX(-44px); }
+  15%  { opacity: 1; transform: none; }
+  80%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(22px) translateY(-12px); }
 }
 @keyframes fl-reveal   { to { opacity: 1; transform: none; } }
 @keyframes fl-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
