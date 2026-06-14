@@ -47,10 +47,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           // enabled in the Privy dashboard). Without this, Privy relies solely on
           // the dashboard config, which can be cached client-side for a few minutes.
           loginMethods: ["google", "twitter", "github", "telegram", "wallet", "email"],
-          appearance: { theme: "dark", accentColor: "#6ee7b7" },
+          appearance: { theme: "dark", accentColor: "#9D5BFF" },
           embeddedWallets: { createOnLogin: "users-without-wallets" },
-          defaultChain: deriveChain,
-          supportedChains: [deriveChain, arbitrum, optimism, base, mainnet],
+          // Use a universally-recognised chain as the login default. External
+          // wallets (Rabby/MetaMask) can fail to connect if forced onto the
+          // obscure Derive Chain (957) on login; keep it only as supported.
+          defaultChain: mainnet,
+          supportedChains: [mainnet, arbitrum, optimism, base, deriveChain],
         }}
       >
         <QueryClientProvider client={queryClient}>
