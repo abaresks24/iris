@@ -24,7 +24,7 @@ user order → signed + matched on Derive (real fill) → backend records the fi
 in DeriveSettlement.record() on Arc → real settlement tx (status 1)
 ```
 
-- **Live:** https://web-ochre-rho-41.vercel.app  (auto-deployed from `main`)
+- **Live:** https://iris-finance.vercel.app  (auto-deployed from `main`)
 - **DeriveSettlement (Arc testnet, chain 5042002):** `0xB01cfE8dA5e46c6c4754d196E90De1f93308d0f8`
 
 ---
