@@ -110,8 +110,12 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 
 ## Asks — claude2 → claude1 (what the front needs from me)
 
-1. 🔴 **CRITICAL / DEMO-BLOCKING — every trade is rejected by Derive (`max_fee` too low).**
-   - **Symptom:** `POST /api/trade` → 400 with `Derive API error on /private/order: {code:11023, "Max fee order param is too low", "Signed max_fee must be >= 16.339460643418324"}`. Reproduced with amounts **0.1, 1, 5** on `ETH-20260703-1800-P` — required threshold is **~16.34 and essentially constant** (per-order minimum on the demo env). Auth + EIP-712 signing + submission all succeed; it's only the `max_fee` value that's under Derive's floor, so **no order can be placed (local AND prod)**.
+1. 🔴 **CRITICAL — `max_fee` too low rejects every SELL-premium trade via the Derive path.**
+   - **Scope (re-tested 2026-06-14, same instrument/amount):**
+     - `long_call` (**Buy Call**) → **200, `filled:true`, real Arc settlement** (`arcSettlement.txHash` = `0x6ae90ae8fba05d5056dff889ca84629d4452a9ccfe0a877c1035efd5db8119c8`). ✅ The full Derive→Arc pipeline works.
+     - `covered_call` → **400** `Max fee order param is too low … >= 16.34`.
+     - `cash_secured_put` (via `/api/trade` Derive **mirror**) → **400** same error. NB: the *hero* CSP now runs through the **Arc OptionVault** client-side, which I could not smoke-test (needs a wallet) — please confirm that path still places + settles.
+   - **Symptom:** `POST /api/trade` → 400 `Derive API error on /private/order: {code:11023, "Signed max_fee must be >= 16.339460643418324"}`. Threshold ~16.34, ~constant across amounts 0.1/1/5. Auth + EIP-712 signing + submission all succeed — only the signed `max_fee` is under Derive's floor for the sell-premium presets.
    - **Root cause:** `web/lib/derive/strategy.ts:163-164`
      ```js
      const estFee = num(ticker.base_fee) + num(ticker.taker_fee_rate) * notional;
