@@ -322,24 +322,6 @@ a:hover { color: var(--color-accent); }
 .fl-canvas-wrap.interactive { pointer-events: auto; } /* debug : orbit */
 .fl-canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
 
-/* L'iris qui "pousse" à côté de nous tout au long du scroll */
-.fl-iris-grow {
-  position: fixed; left: clamp(12px, 4vw, 64px); top: 50%; z-index: 3;
-  height: 16vw; max-height: 220px; width: auto; pointer-events: none;
-  transform: translateY(-50%) scale(0.4); transform-origin: left center;
-  opacity: 0.45;
-  filter: drop-shadow(0 8px 36px rgba(61,220,151,0.4));
-  animation: fl-grow linear both;
-  animation-timeline: scroll(root block);
-}
-@keyframes fl-grow {
-  from { transform: translateY(-50%) scale(0.35); opacity: 0.35; }
-  to   { transform: translateY(-50%) scale(1.25); opacity: 1; }
-}
-@supports not (animation-timeline: scroll()) {
-  .fl-iris-grow { transform: translateY(-50%) scale(0.8); opacity: 0.8; }
-}
-
 /* ── Sections (défilent par-dessus le canvas) ────────────────────────── */
 .fl-overlay { position: relative; z-index: 4; }
 .fl-step {
@@ -356,20 +338,49 @@ a:hover { color: var(--color-accent); }
 .fl-lede { font-size: clamp(1rem, 2.2vw, 1.35rem); color: var(--color-graphite); max-width: 560px; line-height: 1.55; }
 .fl-hint { margin-top: 26px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); animation: fl-pulse 2.4s ease-in-out infinite; }
 
-/* Bulles — carte de verre, alignées à droite (l'iris parle depuis la gauche) */
-.fl-bubble { align-items: flex-end; justify-content: center; }
-.fl-card {
-  max-width: 440px; text-align: left; padding: 26px 30px;
-  background: linear-gradient(180deg, rgba(26,23,38,0.82), rgba(17,15,24,0.78));
-  border: 1px solid var(--color-hairline-strong);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(16px) saturate(1.2);
-  box-shadow: 0 24px 60px -24px rgba(0,0,0,0.75), 0 0 0 1px rgba(157,91,255,0.06);
+/* ── Bulles éducatives — DA rysk.finance ──────────────────────────────
+   Bodoni Moda (titres serif) · DM Sans (corps) · DM Mono (labels) ·
+   charcoal #1e2222 + crème #eee9dd + accent jaune #FFD049.
+   STICKY : chaque bulle est haute (200vh) et reste centrée à l'écran le
+   temps de lire pendant que le chemin continue d'avancer, puis s'en va. */
+.fl-bubble {
+  position: relative; width: 100%; height: 200vh; pointer-events: none;
+  view-timeline-name: --bub; view-timeline-axis: block;
 }
-.fl-tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--color-accent-2); }
-.fl-star { color: var(--color-spec-magenta); }
-.fl-card-title { font-family: var(--font-display); font-size: clamp(1.5rem, 3.5vw, 2.1rem); font-weight: 700; letter-spacing: -0.02em; margin: 8px 0 10px; }
-.fl-card-body { color: var(--color-graphite); font-size: 1.04rem; line-height: 1.62; }
+.fl-sticky {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 7vw;
+}
+.fl-card {
+  max-width: 470px; text-align: left; padding: 30px 34px 34px;
+  background: #1e2222;
+  border: 1px solid #3e4141;
+  border-radius: 10px;
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,0.85);
+  pointer-events: auto;
+}
+.fl-tag {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-rysk-mono), ui-monospace, monospace;
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #FFD049;
+}
+.fl-num { opacity: 0.9; }
+.fl-star {
+  color: #1e2222; background: #FFD049; padding: 3px 9px; border-radius: 5px;
+  font-size: 10.5px; letter-spacing: 0.1em; font-weight: 500;
+}
+.fl-card-title {
+  font-family: var(--font-rysk-serif), Georgia, serif;
+  font-weight: 600; font-size: clamp(1.7rem, 3.8vw, 2.5rem);
+  line-height: 1.08; letter-spacing: -0.005em;
+  color: #eee9dd; margin: 16px 0 14px;
+}
+.fl-card-body {
+  font-family: var(--font-rysk-sans), system-ui, sans-serif;
+  color: #cfcabd; font-size: 1.06rem; line-height: 1.62;
+}
 
 /* CTA */
 .fl-cta-iris { height: 120px; filter: drop-shadow(0 10px 50px rgba(61,220,151,0.45)); }
@@ -377,18 +388,29 @@ a:hover { color: var(--color-accent); }
 .fl-actions { display: flex; gap: 14px; margin-top: 26px; flex-wrap: wrap; justify-content: center; }
 .fl-foot { margin-top: 34px; font-family: var(--font-mono); font-size: 12px; color: var(--color-muted); }
 
-/* Révélation au scroll (Chrome/Edge récents) ; fallback : visible */
+/* Révélation au scroll (Chrome/Edge récents) ; fallback : visible.
+   Bulle : APPARAÎT → TIENT (centrée, sticky) → S'EN VA, piloté par la
+   view-timeline de la section haute (--bub). */
 @supports (animation-timeline: view()) {
-  .fl-card, .fl-cta > *, .fl-intro > * {
+  .fl-card {
+    animation: fl-bubble-io linear both;
+    animation-timeline: --bub;
+    animation-range: cover 5% cover 95%;
+  }
+  .fl-cta > *, .fl-intro > * {
     opacity: 0; transform: translateY(36px);
     animation: fl-reveal linear both;
     animation-timeline: view();
     animation-range: entry 6% cover 42%;
   }
-  .fl-bubble .fl-card { animation-name: fl-reveal-r; }
+}
+@keyframes fl-bubble-io {
+  0%   { opacity: 0; transform: translateX(44px); }
+  15%  { opacity: 1; transform: none; }
+  80%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateX(-22px) translateY(-12px); }
 }
 @keyframes fl-reveal   { to { opacity: 1; transform: none; } }
-@keyframes fl-reveal-r { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
 @keyframes fl-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes fl-pulse { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
 
@@ -408,7 +430,7 @@ a:hover { color: var(--color-accent); }
 .fl-dbg { position: fixed; bottom: 14px; left: 14px; z-index: 20; font-family: var(--font-mono); font-size: 12px; color: var(--color-accent-2); background: rgba(6,5,9,0.7); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--color-hairline); }
 
 @media (max-width: 720px) {
-  .fl-bubble { align-items: center; }
+  .fl-bubble { height: 170vh; }
+  .fl-sticky { justify-content: center; padding: 0 5vw; }
   .fl-card { max-width: 92vw; }
-  .fl-iris-grow { opacity: 0.25; }
 }

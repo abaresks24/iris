@@ -29,17 +29,16 @@ import * as THREE from "three";
 const MODEL = "/iris-forest.glb";
 if (typeof window !== "undefined") useGLTF.preload(MODEL, true);
 
-/* Nombre d'écrans de scroll (≈ nombre de sections de l'overlay). */
-const PAGES = 12;
-
 /* Réglages de descente. */
 const SCENE_SPAN = 120; // grande dimension du modèle ramenée à N unités monde
 const EYE_HEIGHT = 2.2; // hauteur de l'œil au-dessus du chemin
 const LOOK_DROP = 0.9; // la cible regarde légèrement vers le sol
 const LOOK_DIST = 10; // distance regardée devant (le long de la tangente)
-const START_INSET = 0.04; // retrait au départ (fraction du chemin)
-const END_INSET = 0.06; // retrait à l'arrivée
-const FLIP_DIR = false; // ⚑ inverse le sens du parcours (selon le screenshot)
+const START_INSET = 0.0; // retrait au départ (fraction du chemin)
+const END_INSET = 0.0; // retrait à l'arrivée
+const START_EXTEND = 1.6; // prolonge l'entrée (× longueur du 1er segment)
+const END_EXTEND = 0.5; // prolonge la sortie (× longueur du dernier segment)
+const FLIP_DIR = true; // ⚑ sens confirmé par l'utilisateur (départ → champs)
 const ROAD_RE = /road/i; // meshes du chemin : Dirt_Road*, Road_Edge*
 
 type Layout = {
@@ -121,9 +120,11 @@ function useForestLayout(): Layout {
       if (pr < pmin) pmin = pr;
       if (pr > pmax) pmax = pr;
     }
-    // graine = centroïde du nuage proche de l'extrémité de départ
-    const startProj = FLIP_DIR ? pmax : pmin;
-    const endProj = FLIP_DIR ? pmin : pmax;
+    // L'EXTRACTION part toujours de pmin (sens qui traverse le hairpin en
+    // entier). Le sens de PARCOURS est géré ensuite en renversant les points
+    // (FLIP_DIR) — découplé, pour garder une traversée complète du chemin.
+    const startProj = pmin;
+    const endProj = pmax;
     const band = (lo: number, hi: number) => {
       const c = new THREE.Vector3();
       let n = 0;
@@ -204,6 +205,24 @@ function useForestLayout(): Layout {
         c.clone().add(new THREE.Vector3(-10, 0, 0)),
         c.clone().add(new THREE.Vector3(10, 0, 0))
       );
+    }
+
+    // sens de parcours (l'extraction part de pmin ; on renverse si besoin)
+    if (FLIP_DIR) samples.reverse();
+
+    // Prolonge un peu les deux bouts le long de la tangente terminale :
+    // départ pile à l'entrée de la forêt, sortie un poil après et alignée.
+    if (samples.length >= 2) {
+      const a0 = samples[0],
+        a1 = samples[1];
+      const d0 = a0.clone().sub(a1);
+      const l0 = d0.length() || 1;
+      samples.unshift(a0.clone().addScaledVector(d0.multiplyScalar(1 / l0), l0 * START_EXTEND));
+      const b0 = samples[samples.length - 1],
+        b1 = samples[samples.length - 2];
+      const db = b0.clone().sub(b1);
+      const lb = db.length() || 1;
+      samples.push(b0.clone().addScaledVector(db.multiplyScalar(1 / lb), lb * END_EXTEND));
     }
 
     const curve = new THREE.CatmullRomCurve3(
@@ -304,7 +323,7 @@ function Atmosphere({ debug }: { debug: boolean }) {
         color="#ffe7bd"
       />
       <directionalLight position={[-20, 24, -24]} intensity={0.6} color="#bcd0ff" />
-      {!debug && <fog attach="fog" args={["#aeb6c6", 60, 230]} />}
+      {!debug && <fog attach="fog" args={["#b3bccb", 80, 300]} />}
     </>
   );
 }
@@ -514,13 +533,16 @@ function Overlay() {
             </section>
           );
         return (
-          <section key={i} className="fl-step fl-bubble">
-            <div className="fl-card">
-              <span className="fl-tag">
-                {step.n} {step.star && <span className="fl-star">★</span>}
-              </span>
-              <h3 className="fl-card-title">{step.title}</h3>
-              <p className="fl-card-body">{step.body}</p>
+          <section key={i} className="fl-bubble">
+            <div className="fl-sticky">
+              <div className="fl-card">
+                <span className="fl-tag">
+                  <span className="fl-num">{step.n}</span>
+                  {step.star && <span className="fl-star">★ phare</span>}
+                </span>
+                <h3 className="fl-card-title">{step.title}</h3>
+                <p className="fl-card-body">{step.body}</p>
+              </div>
             </div>
           </section>
         );
@@ -590,7 +612,7 @@ export default function ForestExperience() {
   const showReport = debug || previewT != null;
 
   return (
-    <div className="fl-page" style={{ height: debug ? "100vh" : `${PAGES * 100}vh` }}>
+    <div className="fl-page" style={debug ? { height: "100vh", overflow: "hidden" } : undefined}>
       <div className="fl-bg" />
       <div className="fl-vignette" />
       <div className={`fl-canvas-wrap ${debug ? "interactive" : ""}`}>
@@ -619,9 +641,6 @@ export default function ForestExperience() {
         </Canvas>
       </div>
 
-      {!debug && (
-        <img src="/iris_turquoise_contour_decoupe.svg" alt="" className="fl-iris-grow" aria-hidden />
-      )}
       {!debug && <Overlay />}
 
       {debug && <div id="dbg" className="fl-dbg">eye …</div>}
