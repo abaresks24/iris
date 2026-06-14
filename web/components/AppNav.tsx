@@ -9,7 +9,6 @@ const LINKS = [
   { href: "/app/earn", label: "Earn" },
   { href: "/app/premium", label: "Premium" },
   { href: "/app/dashboard", label: "Dashboard" },
-  { href: "/app/points", label: "Points" },
   { href: "/app/leaderboard", label: "Leaderboard" },
 ];
 
