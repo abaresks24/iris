@@ -8,7 +8,7 @@ import { arcChain } from "./settlement";
 const SETTLEMENT_ADDRESS = (process.env.ARC_SETTLEMENT_ADDRESS ||
   "0xB01cfE8dA5e46c6c4754d196E90De1f93308d0f8") as `0x${string}`;
 const EXPLORER = process.env.ARC_EXPLORER || "https://testnet.arcscan.app";
-const RPC = process.env.ARC_RPC || "https://5042002.rpc.thirdweb.com";
+const RPC = process.env.ARC_RPC || "https://rpc.testnet.arc.network";
 
 const ABI = [
   {

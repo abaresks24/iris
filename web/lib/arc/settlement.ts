@@ -21,7 +21,7 @@ import type { PresetId } from "../derive/strategy";
 
 const ZERO_KEY = ("0x" + "0".repeat(64)) as Hex;
 
-const RPC = process.env.ARC_RPC || "https://5042002.rpc.thirdweb.com";
+const RPC = process.env.ARC_RPC || "https://rpc.testnet.arc.network";
 const EXPLORER = process.env.ARC_EXPLORER || "https://testnet.arcscan.app";
 const SETTLEMENT_ADDRESS = (process.env.ARC_SETTLEMENT_ADDRESS ||
   "0xB01cfE8dA5e46c6c4754d196E90De1f93308d0f8") as `0x${string}`;
@@ -112,23 +112,38 @@ export async function recordFillOnArc(
 
   const tradeIdBytes32 = keccak256(toHex(input.deriveTradeId));
 
-  const hash = await wallet.writeContract({
-    address: SETTLEMENT_ADDRESS,
-    abi: RECORD_ABI,
-    functionName: "record",
-    args: [
-      input.trader,
-      KIND[input.preset],
-      ETH_FEED,
-      input.instrument,
-      tradeIdBytes32,
-      toFeed8(input.strike),
-      to1e18(input.size),
-      toUsdc6(input.premiumPerUnit),
-      toUsdc6(input.premiumTotal),
-      BigInt(Math.floor(input.expiry)),
-    ],
-  });
+  const send = () =>
+    wallet.writeContract({
+      address: SETTLEMENT_ADDRESS,
+      abi: RECORD_ABI,
+      functionName: "record",
+      args: [
+        input.trader,
+        KIND[input.preset],
+        ETH_FEED,
+        input.instrument,
+        tradeIdBytes32,
+        toFeed8(input.strike),
+        to1e18(input.size),
+        toUsdc6(input.premiumPerUnit),
+        toUsdc6(input.premiumTotal),
+        BigInt(Math.floor(input.expiry)),
+      ],
+    });
+
+  // Public RPCs rate-limit (429); retry transient failures with backoff.
+  let hash: Hex;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      hash = await send();
+      break;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const transient = /429|rate limit|timeout|fetch failed|ECONN|503|502/i.test(msg);
+      if (!transient || attempt >= 4) throw e;
+      await new Promise((r) => setTimeout(r, 400 * 2 ** attempt));
+    }
+  }
 
   // Wait for inclusion so we can confirm success and surface a real trace.
   await pub.waitForTransactionReceipt({ hash, timeout: 30_000 });
