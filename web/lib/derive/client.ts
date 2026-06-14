@@ -17,23 +17,27 @@ export class DeriveApiError extends Error {
   }
 }
 
+/** Auth identity for a signed request: which Derive account signs it. */
+export interface AuthCtx {
+  walletAddress: `0x${string}`;
+  sessionPrivateKey: `0x${string}`;
+}
+
 async function post<T>(
   endpoint: string,
   body: unknown,
-  auth = false,
+  auth: boolean | AuthCtx = false,
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
   if (auth) {
-    Object.assign(
-      headers,
-      await restAuthHeaders({
-        walletAddress: config.owner,
-        sessionPrivateKey: config.sessionPrivateKey,
-      }),
-    );
+    const ctx: AuthCtx =
+      auth === true
+        ? { walletAddress: config.owner, sessionPrivateKey: config.sessionPrivateKey }
+        : auth;
+    Object.assign(headers, await restAuthHeaders(ctx));
   }
   const res = await fetch(`${BASE}${endpoint}`, {
     method: "POST",
@@ -133,8 +137,11 @@ export interface PlaceOrderBody {
   label?: string;
 }
 
-export function placeOrder(body: PlaceOrderBody): Promise<unknown> {
-  return post<unknown>("/private/order", body, true);
+export function placeOrder(
+  body: PlaceOrderBody,
+  auth: boolean | AuthCtx = true,
+): Promise<unknown> {
+  return post<unknown>("/private/order", body, auth);
 }
 
 export function getSubaccount(subaccount_id: number): Promise<any> {

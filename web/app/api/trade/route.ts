@@ -21,6 +21,7 @@ export async function POST(req: Request) {
       instrumentName,
       amount,
       limitPrice: body?.limitPrice ? Number(body.limitPrice) : undefined,
+      trader: typeof body?.trader === "string" ? body.trader : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

@@ -47,6 +47,13 @@ export interface StrategyCandidates {
   candidates: Economics[];
 }
 
+export interface ArcSettlement {
+  txHash: string;
+  explorerUrl: string;
+  contract: string;
+  chainId: number;
+}
+
 export interface Health {
   ok: boolean;
   env: string;
@@ -80,8 +87,36 @@ export const api = {
     get<StrategyCandidates>(
       `/api/strategies/${preset}?currency=${currency}&amount=${amount}`,
     ),
-  trade: (body: { preset: PresetId; instrumentName: string; amount: number }) =>
-    post<{ economics: Economics; order: unknown }>("/api/trade", body),
+  trade: (body: {
+    preset: PresetId;
+    instrumentName: string;
+    amount: number;
+    trader?: string;
+  }) =>
+    post<{
+      economics: Economics;
+      order: unknown;
+      filled?: boolean;
+      arcSettlement?: ArcSettlement | { error: string };
+    }>("/api/trade", body),
   account: () => get<any>("/api/account"),
   history: () => get<any>("/api/history"),
+  arcPositions: (trader: string) =>
+    get<{ contract: string; explorer: string; positions: ArcPosition[] }>(
+      `/api/arc/positions?trader=${trader}`,
+    ),
 };
+
+export interface ArcPosition {
+  id: number;
+  kind: string;
+  instrument: string;
+  strike: number;
+  size: number;
+  premium: number;
+  expiry: number;
+  recordedAt: number;
+  settled: boolean;
+  payoff: number;
+  deriveTradeId: string;
+}
