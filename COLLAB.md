@@ -125,9 +125,17 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
    - **Repro:** `curl -s -X POST localhost:3000/api/trade -H 'content-type: application/json' -d '{"preset":"cash_secured_put","instrumentName":"ETH-20260703-1800-P","amount":1,"trader":"0x183a4CE28b96F60f3e66be2F6DdCc85474880B36"}'`
    - Found during a full smoke test (2026-06-14, claude2). Everything else passed — see log.
 
+2. ❓ **Positioning question from the user — "we should only MATCH existing Derive orders, never PLACE our own."** Current behaviour isn't that: on the Derive path the **user posts an order** and **our maker account posts the opposite side** to fill it (self-provided liquidity, because the demo testnet book is empty); and the **hero CSP doesn't touch Derive orders at all** (it's the on-chain Arc vault). "Only-match-never-place" is feasible on mainnet (real liquidity) but not on the dead testnet. Your call on the framing — flag if you want to change the model or just adjust the pitch wording.
+
+3. ❓ **Chainlink vs Derive pricing (user asked).** Heads-up so the pitch stays accurate: in `OptionVault.sol` the **CSP premium is priced from a protocol-set `aprBps`, not from Derive** (`_premium()`), and Chainlink is the **settlement/spot oracle** (`_spot()` / `settle()`). So for the hero CSP, Derive supplies the *displayed* price + strike menu, but execution is a self-contained on-chain protocol (premium = aprBps, payoff = Chainlink). Chainlink is genuinely needed (off-chain Derive prices can't settle on-chain) — just don't claim "Derive prices the option" for the vault path.
+
+4. 🎨 **Heads-up — I retuned the SHARED palette + number font** (user asked: "less AI, purple too vivid, fix the number font"). In `globals.css`: `--color-accent` `#9D5BFF`→**`#7C6FB8`** (muted iris violet), spectrum indigo/violet/magenta muted to match, and **numbers switched from DM Mono → DM Sans tabular** (`.numeric`, `.card .apr`, `.kpi .v`, `.hero-num`, `.apr-range`; `.mono` and uppercase labels stay DM Mono). This ripples to the `/app` too — ping me if any of your number styles look off and I'll adjust.
+
 ---
 
 ## Open log (dated, newest first)
+
+- **2026-06-14 (claude2):** Design retune on user request — muted the iris violet (`--color-accent` → `#7C6FB8`) + spectrum, numbers DM Mono → DM Sans tabular ("less AI" look). Flagged 3 things to claude1 (asks #2–4): the only-match-vs-place positioning, the Chainlink-vs-Derive pricing nuance (CSP premium = `aprBps`, not Derive), and the shared-token change.
 
 - **2026-06-14 (claude2):** Ran a full smoke test (local + live). **PASS:** all pages 200; live deploy serves the new 3D landing; `/api/health|presets|instruments(394 ETH opts)|strategies(real candidates)|arc/positions` all good; `/app/earn` renders. **FAIL (critical):** `POST /api/trade` rejected by Derive — `max_fee` below the ~16.34 minimum for every amount → see **ask #1 to claude1** (one-line fix in `lib/derive/strategy.ts`). Not editing it (claude1 owns `lib/derive/**`).
 - **2026-06-14 (claude2):** Landing **merged into `main`** (path-following camera, sticky alternating Rysk-styled bubbles, English copy). Merged `origin/main` first — adopted the shared Rysk fonts + forest palette, deleted the old video landing (`.landing*`/`.hero-*` CSS + `hero.mp4`). `tsc` + `next build` green. Owns only `page.tsx` + `components/landing/**`; `globals.css` edits are confined to the `.fl-*` landing block.

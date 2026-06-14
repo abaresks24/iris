@@ -23,15 +23,15 @@
   --color-hairline-strong: rgba(234,241,236,0.16);
 
   /* Iris — violet → or → vert (dégradé signature, fills only) */
-  --color-spec-indigo:  #6D4AFF;
-  --color-spec-violet:  #9D5BFF;
-  --color-spec-magenta: #C89BFF;
+  --color-spec-indigo:  #6A5DAE;
+  --color-spec-violet:  #8C7FC2;
+  --color-spec-magenta: #B3A6D6;
   --color-spec-gold:    #F5C451;
   --color-spec-amber:   #6EE6A8;
   --color-spec-cyan:    #5CF2A6;
 
   /* Interactif + sémantique trading */
-  --color-accent:    #9D5BFF;    /* violet iris — pétales, anchor d'interaction */
+  --color-accent:    #7C6FB8;    /* iris violet muté — moins néon, plus raffiné */
   --color-accent-2:  #3DDC97;    /* vert feuille — accent secondaire */
   --color-gold:      #F5C451;    /* ambre doré — la "barbe" de l'iris (accent rare) */
   --color-positive:  #3DDC97;    /* hausse / gain */
@@ -76,7 +76,7 @@ body {
 .body-sm { font-size: 0.875rem; line-height: 1.5; }
 
 /* Utilities signature */
-.numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.numeric { font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
 .text-spectrum {
   background: var(--spectrum);
@@ -107,7 +107,8 @@ body {
 a { color: var(--color-bone); text-decoration: none; }
 a:hover { color: var(--color-accent); }
 
-.mono, .numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.numeric { font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
 /* Layout */
 .container { max-width: 1100px; margin: 0 auto; padding: 8px 22px 90px; }
@@ -177,7 +178,7 @@ a:hover { color: var(--color-accent); }
   border-color: var(--color-accent); transform: translateY(-2px);
   box-shadow: 0 8px 40px -12px rgba(157,91,255,0.3);
 }
-.card .apr { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 600; color: var(--color-bone); line-height: 1; }
+.card .apr { font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-size: 28px; font-weight: 600; color: var(--color-bone); line-height: 1; }
 .card .apr small { font-family: var(--font-sans); font-size: 13px; color: var(--color-graphite); font-weight: 400; }
 .card .row { display: flex; justify-content: space-between; font-size: 13px; }
 .card .row .k { color: var(--color-graphite); }
@@ -205,7 +206,7 @@ a:hover { color: var(--color-accent); }
 
 /* KPI — values mono */
 .kpi { display: flex; flex-direction: column; gap: 2px; }
-.kpi .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; }
+.kpi .v { font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; font-size: 19px; font-weight: 600; }
 .kpi .l { font-size: 12px; color: var(--color-graphite); }
 
 /* Notice */
@@ -522,14 +523,14 @@ a:hover { color: var(--color-accent); }
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.hero-num { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+.hero-num { font-family: var(--font-sans); font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.02em; }
 
 /* Asset chip — colored token dot + ticker */
 .asset-chip { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: var(--color-bone); }
 .asset-chip .tok { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-family: var(--font-mono); color: #08140E; flex: none; }
 
 /* APR range cell (Rysk min–max) */
-.apr-range { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.apr-range { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .apr-range .max { color: var(--color-accent); font-weight: 600; font-size: 15px; }
 .apr-range .sep { color: var(--color-muted); }
 .apr-range .min { color: var(--color-graphite); font-size: 12.5px; }
