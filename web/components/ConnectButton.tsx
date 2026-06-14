@@ -20,11 +20,10 @@ function PrivyConnect() {
   }
 
   return (
-    <div className="flex">
-      <span className="badge green mono">{shortAddr(addr)}</span>
-      <button className="btn secondary" onClick={logout}>
-        Disconnect
-      </button>
+    <div className="wallet-pill">
+      <span className="wallet-dot" />
+      <span className="mono">{shortAddr(addr)}</span>
+      <button className="wallet-x" onClick={logout} title="Disconnect">×</button>
     </div>
   );
 }

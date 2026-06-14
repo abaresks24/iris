@@ -572,3 +572,18 @@ a:hover { color: var(--color-accent); }
   /* Lighten ambient cost on small/often-low-power devices */
   .firefly { display: none; }
 }
+
+/* Connected wallet pill (Rysk-style — subtle, not a bright badge) */
+.wallet-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--color-surface); border: 1px solid var(--color-hairline-strong);
+  border-radius: 999px; padding: 7px 10px 7px 12px; font-size: 13px; color: var(--color-bone);
+  transition: border-color var(--dur-fast) var(--ease-iris);
+}
+.wallet-pill:hover { border-color: var(--color-graphite); }
+.wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--spectrum); flex: none; }
+.wallet-x {
+  background: none; border: none; color: var(--color-muted); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 0 1px 2px; transition: color var(--dur-fast) var(--ease-iris);
+}
+.wallet-x:hover { color: var(--color-accent); }

@@ -18,11 +18,18 @@ export const arcTestnet = defineChain({
   blockExplorers: { default: { name: "Arcscan", url: ARC_EXPLORER } },
 });
 
-export const VAULT_ADDRESS = "0x0cD8f966B5c1627B520cf28dC3a9c07Ee427497E" as const;
-export const USDC_ADDRESS = "0xE392aA90f0203c8717D1F15eDb591A382B05028f" as const;
+export const VAULT_ADDRESS = "0xFEE4D91B99Cc6f0BE467C747b1E1AB97822B99dD" as const;
+export const USDC_ADDRESS = "0xB0b445C8F7caD2eB2152751733dF1854AC14237c" as const;
 
 /** Earn explorer currency → vault marketId. */
 export const MARKET_ID: Record<string, number> = { ETH: 0, BTC: 1, SOL: 2 };
+
+/** Covered-call collateral token per asset (mintable test underlyings, 18-dec). */
+export const UNDERLYING_BY_CURRENCY: Record<string, `0x${string}`> = {
+  ETH: "0x8d030C0349A5cb461f34Dc9B4aAD33275daDb370",
+  BTC: "0x5e9DC692072fc9d39f11751C2dA15b1063E6483e",
+  SOL: "0x17C3a14d7A79f75653DEEB214c9477439C19577e",
+};
 
 export const USDC_ABI = [
   { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [] },
@@ -39,6 +46,16 @@ export const VAULT_ABI = [
   },
   {
     type: "function", name: "openCashSecuredPut", stateMutability: "nonpayable",
+    inputs: [{ name: "marketId", type: "uint8" }, { name: "strike", type: "uint256" }, { name: "size", type: "uint256" }, { name: "expiry", type: "uint64" }],
+    outputs: [{ name: "id", type: "uint256" }],
+  },
+  {
+    type: "function", name: "quoteCoveredCall", stateMutability: "view",
+    inputs: [{ name: "marketId", type: "uint8" }, { name: "size", type: "uint256" }, { name: "expiry", type: "uint64" }],
+    outputs: [{ name: "collateral", type: "uint256" }, { name: "premium", type: "uint256" }],
+  },
+  {
+    type: "function", name: "openCoveredCall", stateMutability: "nonpayable",
     inputs: [{ name: "marketId", type: "uint8" }, { name: "strike", type: "uint256" }, { name: "size", type: "uint256" }, { name: "expiry", type: "uint64" }],
     outputs: [{ name: "id", type: "uint256" }],
   },

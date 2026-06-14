@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brand } from "./Brand";
 import { ConnectButton } from "./ConnectButton";
+import { Deposit } from "./Deposit";
 
 const LINKS = [
   { href: "/app/earn", label: "Earn" },
@@ -28,7 +29,10 @@ export function AppNav() {
           </Link>
         ))}
       </div>
-      <ConnectButton />
+      <div className="flex" style={{ gap: 8 }}>
+        <Deposit variant="btn secondary" />
+        <ConnectButton />
+      </div>
     </nav>
   );
 }
