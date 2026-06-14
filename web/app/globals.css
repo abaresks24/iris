@@ -298,3 +298,25 @@ a:hover { color: var(--color-accent); }
 .table th { color: var(--color-graphite); font-family: var(--font-mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
 .table td { color: var(--color-bone); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .table tr:hover td { background: var(--color-surface); }
+
+/* ── Order ticket ───────────────────────────────────────────────────── */
+.ticket { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+@media (max-width: 820px) { .ticket { grid-template-columns: 1fr; } }
+
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-btn {
+  flex: 1; min-width: fit-content; padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--color-surface-2); border: 1px solid var(--color-hairline);
+  color: var(--color-graphite); font-size: 13px; cursor: pointer; white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-iris);
+}
+.seg-btn:hover { color: var(--color-bone); }
+.seg-btn.on { color: var(--color-bone); border-color: var(--color-accent); background: var(--color-surface); }
+
+.preview { display: flex; flex-direction: column; background: linear-gradient(180deg, var(--color-surface), var(--color-ink)); }
+.apr-tag {
+  display: inline-block; align-self: flex-start; margin-top: 8px; padding: 3px 10px;
+  border-radius: 999px; font-size: 13px; color: var(--color-accent-2);
+  border: 1px solid color-mix(in srgb, var(--color-accent-2) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent-2) 10%, transparent);
+}
