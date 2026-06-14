@@ -6,7 +6,7 @@ import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "wagmi";
 import { arbitrum, base, mainnet, optimism } from "viem/chains";
-import { deriveChain } from "@/lib/chains";
+import { arcTestnet } from "@/lib/protocol/arc";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "";
 
@@ -14,9 +14,9 @@ const FundingContext = createContext({ privyEnabled: false });
 export const useFunding = () => useContext(FundingContext);
 
 const wagmiConfig = createConfig({
-  chains: [deriveChain, arbitrum, optimism, base, mainnet],
+  chains: [arcTestnet, arbitrum, optimism, base, mainnet],
   transports: {
-    [deriveChain.id]: http(),
+    [arcTestnet.id]: http(),
     [arbitrum.id]: http(),
     [optimism.id]: http(),
     [base.id]: http(),
@@ -47,10 +47,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           // enabled in the Privy dashboard). Without this, Privy relies solely on
           // the dashboard config, which can be cached client-side for a few minutes.
           loginMethods: ["google", "twitter", "github", "telegram", "wallet", "email"],
-          appearance: { theme: "dark", accentColor: "#6ee7b7" },
+          appearance: { theme: "dark", accentColor: "#9D5BFF" },
           embeddedWallets: { createOnLogin: "users-without-wallets" },
-          defaultChain: deriveChain,
-          supportedChains: [deriveChain, arbitrum, optimism, base, mainnet],
+          defaultChain: arcTestnet,
+          supportedChains: [arcTestnet, arbitrum, optimism, base, mainnet],
         }}
       >
         <QueryClientProvider client={queryClient}>
