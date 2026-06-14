@@ -112,9 +112,9 @@ Types `Economics`, `PresetMeta`, `StrategyCandidates`, `ArcSettlement`, `ArcPosi
 
 1. 🔴 **CRITICAL — `max_fee` too low rejects every SELL-premium trade via the Derive path.**
    - **Scope (re-tested 2026-06-14, same instrument/amount):**
-     - `long_call` (**Buy Call**) → **200, `filled:true`, real Arc settlement** (`arcSettlement.txHash` = `0x6ae90ae8fba05d5056dff889ca84629d4452a9ccfe0a877c1035efd5db8119c8`). ✅ The full Derive→Arc pipeline works.
-     - `covered_call` → **400** `Max fee order param is too low … >= 16.34`.
-     - `cash_secured_put` (via `/api/trade` Derive **mirror**) → **400** same error. NB: the *hero* CSP now runs through the **Arc OptionVault** client-side, which I could not smoke-test (needs a wallet) — please confirm that path still places + settles.
+     - **Hero Cash-Secured Put (Arc OptionVault path)** → ✅ **WORKS E2E** — verified headless from a throwaway wallet (`web/test-csp-vault.mjs`): `/api/gas` drip → `quoteCashSecuredPut` (collateral 1800, premium 139.4 USDC) → mint → approve → `openCashSecuredPut` **status success** (`0xe2fe4ca446c512fa3dd140ae7508792bda103fb2b070b1b1a57520d0c4dbe1da`), position lands on-chain + shows in `/api/positions` (`real:true`). The vault path is solid.
+     - `long_call` (**Buy Call**, Derive path) → ✅ **200, `filled:true`, real Arc settlement** (`0x6ae90ae8fba05d5056dff889ca84629d4452a9ccfe0a877c1035efd5db8119c8`).
+     - `covered_call` (Derive path) → ❌ **400** `Max fee order param is too low … >= 16.34`. **This is now the ONLY broken trade flow** (CSP uses the vault, Buy Call's max_fee happens to clear the floor; only the sell-call mirror underprices `max_fee`).
    - **Symptom:** `POST /api/trade` → 400 `Derive API error on /private/order: {code:11023, "Signed max_fee must be >= 16.339460643418324"}`. Threshold ~16.34, ~constant across amounts 0.1/1/5. Auth + EIP-712 signing + submission all succeed — only the signed `max_fee` is under Derive's floor for the sell-premium presets.
    - **Root cause:** `web/lib/derive/strategy.ts:163-164`
      ```js
