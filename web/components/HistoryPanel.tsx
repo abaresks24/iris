@@ -1,72 +1,83 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { api } from "@/lib/api";
-import { num } from "@/lib/format";
+import { usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
+import { TokenIcon } from "./TokenIcon";
 
+/** The connected wallet's own activity — fills booked on-chain on Arc. */
 export function HistoryPanel() {
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const trader = wallets[0]?.address;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["history"],
-    queryFn: () => api.history(),
-    refetchInterval: 12000,
+    queryKey: ["arcPositions", trader],
+    queryFn: () => api.arcPositions(trader!),
+    enabled: !!trader,
+    refetchInterval: 10000,
   });
 
-  if (isLoading)
-    return (
-      <div className="notice">
-        <IrisLoader /> Loading trade history…
-      </div>
-    );
-
-  if (!data || data.tradingEnabled === false) {
+  if (!ready) return <div className="notice"><IrisLoader /> …</div>;
+  if (!authenticated || !trader)
     return (
       <div className="placeholder">
-        <h3>No trade history yet</h3>
-        <p>
-          Connect a configured Derive account (see Docs → Onboarding) and your
-          fills will appear here.
-        </p>
+        <h3>Connect your wallet</h3>
+        <p>Your fills will appear here once you connect and trade.</p>
       </div>
     );
-  }
+  if (isLoading) return <div className="notice"><IrisLoader /> Loading your activity…</div>;
 
-  const trades: any[] = data.trades ?? [];
-  if (trades.length === 0) {
+  const fills = [...(data?.positions ?? [])].sort((a, b) => b.recordedAt - a.recordedAt);
+  if (fills.length === 0)
     return (
       <div className="placeholder">
-        <h3>No trades yet</h3>
-        <p>Place a strategy from the Trade tab — your fills land here.</p>
+        <h3>No activity yet</h3>
+        <p>Open a strategy from <a href="/app/earn">Earn</a> — your fills land here.</p>
       </div>
     );
-  }
 
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>Instrument</th>
-          <th>Side</th>
-          <th>Amount</th>
-          <th>Price</th>
-          <th className="right">Realized P&amp;L</th>
-        </tr>
-      </thead>
-      <tbody>
-        {trades.map((t, i) => (
-          <tr key={t.trade_id ?? i}>
-            <td>{t.timestamp ? new Date(Number(t.timestamp)).toLocaleString() : "—"}</td>
-            <td className="mono">{t.instrument_name}</td>
-            <td className={t.direction === "buy" ? "ok" : "err"}>{t.direction}</td>
-            <td>{num(Number(t.trade_amount ?? t.amount ?? 0))}</td>
-            <td>{num(Number(t.trade_price ?? t.price ?? 0))}</td>
-            <td className="right">
-              {t.realized_pnl != null ? num(Number(t.realized_pnl)) : "—"}
-            </td>
+    <div style={{ overflowX: "auto" }}>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Asset</th>
+            <th>Strategy</th>
+            <th>Premium</th>
+            <th className="right">Settlement</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {fills.map((f) => (
+            <tr key={f.id}>
+              <td>{f.recordedAt ? new Date(f.recordedAt * 1000).toLocaleString() : "—"}</td>
+              <td>
+                <span className="asset-chip">
+                  <TokenIcon currency={f.instrument.split("-")[0]} size={20} />
+                  {f.instrument}
+                </span>
+              </td>
+              <td>{f.kind}</td>
+              <td className="ok">{usd(f.premium)}</td>
+              <td className="right">
+                <a
+                  href={`${data!.explorer}/address/${data!.contract}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono small"
+                  style={{ color: "var(--color-accent-2)" }}
+                >
+                  on-chain ↗
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

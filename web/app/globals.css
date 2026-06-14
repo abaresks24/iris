@@ -409,3 +409,39 @@ a:hover { color: var(--color-accent); }
 
 /* Small per-row action button (Rysk "Earn on X") */
 .btn.sm { padding: 7px 15px; font-size: 13px; border-radius: var(--radius-sm); }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — phone layout
+   ════════════════════════════════════════════════════════════════════ */
+.title-serif { font-size: clamp(28px, 6vw, 46px); }
+
+@media (max-width: 640px) {
+  .container { padding: 6px 14px 80px; }
+
+  /* Nav wraps: brand + connect on top row, links scroll under */
+  .appnav { flex-wrap: wrap; gap: 10px 12px; padding: 12px 14px; }
+  .appnav-links { order: 3; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; }
+  .appnav-link { white-space: nowrap; }
+  .brand-logo { height: 22px; }
+
+  /* Headings + hero numbers scale down */
+  .title-serif { font-size: 28px !important; }
+  .hero-num { font-size: 36px !important; }
+
+  /* Stack any multi-column grids */
+  .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+
+  /* Tables scroll horizontally instead of squishing */
+  .table { font-size: 13px; }
+  .table th, .table td { padding: 9px 10px; }
+
+  /* Modal fills the screen comfortably */
+  .modal { padding: 18px; border-radius: var(--radius); }
+  .modal h3 { font-size: 19px; }
+
+  /* Docs/learn: drop the sticky TOC, single column */
+  .doc-layout { grid-template-columns: 1fr; gap: 24px; }
+
+  /* Lighten ambient cost on small/often-low-power devices */
+  .firefly { display: none; }
+}

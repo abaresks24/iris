@@ -7,6 +7,7 @@ import { api, type PresetId } from "@/lib/api";
 import { pct, usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { CountUp } from "./CountUp";
+import { TokenIcon } from "./TokenIcon";
 import { DepositModal } from "./DepositModal";
 
 interface Opp {
@@ -18,11 +19,6 @@ interface Opp {
 
 // Asset × strategy matrix (income presets only — these are what you "earn" on).
 const ASSETS = ["ETH", "BTC", "SOL"];
-const ASSET_COLOR: Record<string, string> = {
-  ETH: "var(--color-accent)", // violet
-  BTC: "var(--color-gold)", // amber
-  SOL: "var(--color-accent-2)", // green
-};
 const STRATS: { preset: PresetId; label: string }[] = [
   { preset: "cash_secured_put", label: "Cash-Secured Put" },
   { preset: "covered_call", label: "Covered Call" },
@@ -145,9 +141,7 @@ export function EarnExplorer() {
               >
                 <td>
                   <span className="asset-chip">
-                    <span className="tok" style={{ background: ASSET_COLOR[r.currency] ?? "var(--color-accent)" }}>
-                      {r.currency.slice(0, 1)}
-                    </span>
+                    <TokenIcon currency={r.currency} size={22} />
                     {r.currency}
                   </span>
                 </td>
