@@ -8,6 +8,8 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
+    "@lifi/compose-spec": "^0.2.0-staging.5",
+    "@lifi/composer-sdk": "^0.2.0-staging.5",
     "@lifi/sdk": "^3.6.0",
     "@privy-io/react-auth": "^2.13.0",
     "@privy-io/wagmi": "^1.0.4",

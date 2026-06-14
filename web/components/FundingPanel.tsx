@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
+import { parseUnits } from "viem";
 import { CCTP_SOURCES, burnToArc, getAttestation, mintOnArc } from "@/lib/protocol/cctp";
+import { composeDepositToArc } from "@/lib/protocol/lifiCompose";
 import { arcTestnet } from "@/lib/protocol/arc";
 import { IrisLoader } from "./IrisLoader";
 
@@ -23,6 +25,45 @@ export function FundingPanel() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function oneTapComposer() {
+    if (!wallet || !address) {
+      setError("Connect a wallet first.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      setStatus(`Switching to ${CCTP_SOURCES[sourceId].name}…`);
+      await switchChainAsync({ chainId: sourceId });
+
+      setStatus("Composing LI.FI Flow (swap → CCTP burn → Arc)…");
+      const res = await composeDepositToArc({
+        sourceChainId: sourceId,
+        fromToken: CCTP_SOURCES[sourceId].usdc, // pay in USDC (or any token; swap leg handles it)
+        amountWei: parseUnits(amount, 6),
+        signer: address,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tr = (res as any).transactionRequest;
+      if (!tr) throw new Error("Composer returned no transaction (check simulation).");
+
+      setStatus("Submitting the composed transaction…");
+      await wallet.sendTransaction({
+        to: tr.to,
+        data: tr.data,
+        value: tr.value ? BigInt(tr.value) : undefined,
+        account: address,
+        chain: null,
+      });
+      setStatus("✓ Composed deposit submitted — CCTP mints USDC on Arc shortly.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Composer flow failed");
+      setStatus("");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function bridge() {
     if (!wallet || !address) {
@@ -85,8 +126,11 @@ export function FundingPanel() {
             </div>
           </div>
 
-          <button className="btn block" onClick={bridge} disabled={busy}>
-            {busy ? <IrisLoader /> : "Bridge to Arc →"}
+          <button className="btn block" onClick={oneTapComposer} disabled={busy}>
+            {busy ? <IrisLoader /> : "⚡ One-tap deposit (LI.FI Composer)"}
+          </button>
+          <button className="btn ghost block" style={{ marginTop: 8 }} onClick={bridge} disabled={busy}>
+            {busy ? <IrisLoader /> : "Bridge step-by-step (CCTP)"}
           </button>
 
           {status && <p className="small ok" style={{ marginTop: 12 }}>{status}</p>}
