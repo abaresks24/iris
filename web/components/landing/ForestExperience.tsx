@@ -1,56 +1,57 @@
 "use client";
 
 /* ════════════════════════════════════════════════════════════════════
-   IRIS — landing 3D : descente d'un chemin forestier piloté au scroll.
-   La caméra avance le long de la route à mesure que l'on scrolle ; l'iris
-   (SVG) "pousse" à côté et explique les options ; au bout, les CTA.
+   IRIS — landing 3D : on descend un VRAI chemin forestier au scroll.
 
-   Debug : ouvrir /?debug pour activer OrbitControls + lecture caméra,
-   afin de caler les WAYPOINTS sur le vrai modèle.
+   - La caméra suit la polyline réelle du chemin (centroïdes des meshes de
+     route, tranche par tranche → suit les courbes), pas une ligne droite.
+   - Scroll NATIF (canvas fixe + sections qui défilent) → les bulles
+     éducatives et l'iris qui "pousse" se révèlent au scroll.
+   - image.png en backdrop ; 10 bulles expliquent options + protocole.
+
+   Réglage : /?debug (orbit + centerline + bbox) · /?preview=<0..1> (fige
+   la caméra à une position de scroll). Constantes ci-dessous.
    ════════════════════════════════════════════════════════════════════ */
 
-import { Suspense, useMemo, useRef, useState, useEffect } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   useGLTF,
-  ScrollControls,
-  Scroll,
-  useScroll,
   OrbitControls,
   AdaptiveDpr,
   Preload,
   useProgress,
+  Line,
 } from "@react-three/drei";
 import * as THREE from "three";
 
 const MODEL = "/iris-forest.glb";
 if (typeof window !== "undefined") useGLTF.preload(MODEL, true);
 
-/* Nombre de "pages" de scroll → aligné sur les 5 sections de l'overlay
-   (intro + 3 bulles + CTA) pour que la CTA arrive en fin de course caméra. */
-const PAGES = 5;
+/* Nombre d'écrans de scroll (≈ nombre de sections de l'overlay). */
+const PAGES = 12;
 
-/* Réglages de descente (calés une fois la route détectée). */
+/* Réglages de descente. */
 const SCENE_SPAN = 120; // grande dimension du modèle ramenée à N unités monde
-const EYE_HEIGHT = 1.8; // hauteur de l'œil au-dessus du sol (raycasté)
-const LOOK_AHEAD = 16; // distance regardée devant
-const LOOK_DROP = 0.6; // la cible regarde légèrement vers le sol
-const FLIP_DIR = false; // inverse le sens de parcours si on entre "par l'arrière"
-const START_INSET = 0.06; // retrait au départ (fraction de la route)
-const END_INSET = 0.24; // retrait à l'arrivée (reste dans les arbres pour la CTA)
-const ROAD_RE = /road|cobble/i; // strict : Dirt_Road*, Road_Edge*, Cobblestone
+const EYE_HEIGHT = 2.2; // hauteur de l'œil au-dessus du chemin
+const LOOK_DROP = 0.9; // la cible regarde légèrement vers le sol
+const LOOK_DIST = 10; // distance regardée devant (le long de la tangente)
+const START_INSET = 0.04; // retrait au départ (fraction du chemin)
+const END_INSET = 0.06; // retrait à l'arrivée
+const FLIP_DIR = false; // ⚑ inverse le sens du parcours (selon le screenshot)
+const ROAD_RE = /road/i; // meshes du chemin : Dirt_Road*, Road_Edge*
 
 type Layout = {
   group: THREE.Group;
-  eye: THREE.Vector3[];
-  target: THREE.Vector3[];
-  roadBox: THREE.Box3; // bbox route en espace monde (debug)
-  fullBox: THREE.Box3; // bbox modèle entier en espace monde (debug)
+  curve: THREE.CatmullRomCurve3; // centerline du chemin (espace monde)
+  samples: THREE.Vector3[]; // points de la centerline (debug)
+  roadBox: THREE.Box3;
+  fullBox: THREE.Box3;
 };
 
-/* Charge la scène, la recentre/échelonne, ET détecte automatiquement la
-   route pour en déduire le trajet caméra. Mémoïsé sur la scène (cache useGLTF). */
+/* Charge la scène, la recentre/échelonne, ET extrait la polyline réelle du
+   chemin depuis la géométrie des meshes de route. Mémoïsé (cache useGLTF). */
 function useForestLayout(): Layout {
   const { scene } = useGLTF(MODEL, true);
   return useMemo(() => {
@@ -61,17 +62,16 @@ function useForestLayout(): Layout {
     const s = SCENE_SPAN / Math.max(size.x, size.z);
     const offset = new THREE.Vector3(-center.x, -box.min.y, -center.z);
 
-    // espace original → monde (mêmes transforms que le <group> ci-dessous)
-    const toWorld = (p: THREE.Vector3) =>
-      new THREE.Vector3(
-        (p.x + offset.x) * s,
-        (p.y + offset.y) * s,
-        (p.z + offset.z) * s
-      );
+    const group = new THREE.Group();
+    group.add(root);
+    group.scale.setScalar(s);
+    root.position.copy(offset);
+    group.updateMatrixWorld(true);
 
-    // bbox de la route SEULE (matériaux Dirt_Road* / Cobblestone) — strict,
-    // pour obtenir une vraie centerline et pas tout le diorama.
+    // ── Échantillonne les sommets des meshes de route (en espace monde) ──
+    const roadPts: THREE.Vector3[] = [];
     const roadBox = new THREE.Box3().makeEmpty();
+    const tmp = new THREE.Vector3();
     root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -79,79 +79,158 @@ function useForestLayout(): Layout {
       const mat = m.material as THREE.MeshStandardMaterial;
       if (mat && "envMapIntensity" in mat) mat.envMapIntensity = 0.6;
       const name = `${o.name} ${mat?.name ?? ""}`;
-      if (ROAD_RE.test(name)) roadBox.expandByObject(m);
+      if (!ROAD_RE.test(name)) return;
+      roadBox.expandByObject(m);
+      const pos = m.geometry.attributes.position;
+      const step = Math.max(1, Math.floor(pos.count / 1200));
+      for (let i = 0; i < pos.count; i += step) {
+        tmp.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+        roadPts.push(tmp.clone());
+      }
     });
-    if (roadBox.isEmpty()) roadBox.copy(box); // fallback : tout le modèle
 
-    // Construit le groupe MAINTENANT pour pouvoir raycaster en espace monde.
-    const group = new THREE.Group();
-    group.add(root);
-    group.scale.setScalar(s);
-    root.position.copy(offset);
-    group.updateMatrixWorld(true);
+    // ── PCA (x,z) : axe principal du chemin (gère un chemin en diagonale) ──
+    let mx = 0,
+      mz = 0;
+    for (const p of roadPts) {
+      mx += p.x;
+      mz += p.z;
+    }
+    mx /= roadPts.length || 1;
+    mz /= roadPts.length || 1;
+    let sxx = 0,
+      szz = 0,
+      sxz = 0;
+    for (const p of roadPts) {
+      const dx = p.x - mx,
+        dz = p.z - mz;
+      sxx += dx * dx;
+      szz += dz * dz;
+      sxz += dx * dz;
+    }
+    const theta = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+    const ux = Math.cos(theta),
+      uz = Math.sin(theta);
+    const projOf = (p: THREE.Vector3) => (p.x - mx) * ux + (p.z - mz) * uz;
 
-    const wMin = toWorld(roadBox.min);
-    const wMax = toWorld(roadBox.max);
-    const span = new THREE.Vector3().subVectors(wMax, wMin);
-    const alongZ = Math.abs(span.z) >= Math.abs(span.x);
-
-    // axe de parcours = grande dimension de la route ; centre transversal fixe
-    const cross = alongZ ? (wMin.x + wMax.x) / 2 : (wMin.z + wMax.z) / 2;
-    let a = alongZ ? wMax.z : wMax.x; // entrée
-    let b = alongZ ? wMin.z : wMin.x; // sortie
-    if (FLIP_DIR) [a, b] = [b, a];
-    const dir = Math.sign(b - a) || 1;
-    // on reste à l'intérieur du diorama : retrait au départ, et surtout à
-    // l'arrivée pour que la CTA finale ne regarde pas par-dessus le bord.
-    const len = Math.abs(b - a);
-    a += dir * len * START_INSET;
-    b -= dir * len * END_INSET;
-
-    // Hauteur réelle du sol par raycast vertical descendant (on "marche" dessus).
-    const ray = new THREE.Raycaster();
-    const down = new THREE.Vector3(0, -1, 0);
-    const topY = wMax.y + 50;
-    const surfaceY = (x: number, z: number, fallback: number) => {
-      ray.set(new THREE.Vector3(x, topY, z), down);
-      const hits = ray.intersectObject(group, true);
-      return hits.length ? hits[0].point.y : fallback;
+    // ── Extrémités du chemin (extrêmes le long de l'axe principal) ──
+    let pmin = Infinity,
+      pmax = -Infinity;
+    for (const p of roadPts) {
+      const pr = projOf(p);
+      if (pr < pmin) pmin = pr;
+      if (pr > pmax) pmax = pr;
+    }
+    // graine = centroïde du nuage proche de l'extrémité de départ
+    const startProj = FLIP_DIR ? pmax : pmin;
+    const endProj = FLIP_DIR ? pmin : pmax;
+    const band = (lo: number, hi: number) => {
+      const c = new THREE.Vector3();
+      let n = 0;
+      for (const p of roadPts) {
+        const pr = projOf(p);
+        if (pr >= Math.min(lo, hi) && pr <= Math.max(lo, hi)) {
+          c.add(p);
+          n++;
+        }
+      }
+      return n ? c.multiplyScalar(1 / n) : null;
     };
+    const span = Math.abs(pmax - pmin) || 1;
+    const seed = band(startProj, startProj + (endProj - startProj) * 0.05);
+    const endPt = band(endProj - (endProj - startProj) * 0.05, endProj);
 
-    const at = (along: number, wob: number): THREE.Vector3 =>
-      alongZ
-        ? new THREE.Vector3(cross + wob, 0, along)
-        : new THREE.Vector3(along, 0, cross + wob);
-
-    const N = 8;
-    const eye: THREE.Vector3[] = [];
-    const target: THREE.Vector3[] = [];
-    let lastY = (wMin.y + wMax.y) / 2;
-    for (let i = 0; i <= N; i++) {
-      const t = i / N;
-      const along = THREE.MathUtils.lerp(a, b, t);
-      const wob = Math.sin(t * Math.PI * 1.5) * 4; // léger serpentin
-      const p = at(along, wob);
-      const gy = surfaceY(p.x, p.z, lastY);
-      lastY = gy;
-      eye.push(new THREE.Vector3(p.x, gy + EYE_HEIGHT, p.z));
-
-      // cible : point devant sur la route, à sa hauteur de sol
-      const ahead = along + dir * LOOK_AHEAD;
-      const pa = at(ahead, 0);
-      const ay = surfaceY(pa.x, pa.z, gy);
-      target.push(
-        new THREE.Vector3(pa.x, ay + EYE_HEIGHT - LOOK_DROP, pa.z)
+    // ── « Snake » : suit la route en prenant le centroïde des points DEVANT ──
+    const samples: THREE.Vector3[] = [];
+    if (seed && endPt) {
+      const heading2 = new THREE.Vector2(
+        endPt.x - seed.x,
+        endPt.z - seed.z
+      ).normalize();
+      let cur = seed.clone();
+      samples.push(cur.clone());
+      const STEP = span * 0.04; // pas
+      const R = span * 0.1; // rayon de visée
+      const dirv = new THREE.Vector2();
+      for (let it = 0; it < 60; it++) {
+        // candidats : points dans [STEP/2 .. R] et dans un cône devant
+        let cone = Math.cos(THREE.MathUtils.degToRad(75));
+        let cx = 0,
+          cy = 0,
+          cz = 0,
+          cn = 0;
+        const gather = (coneCos: number) => {
+          cx = cy = cz = cn = 0;
+          for (const p of roadPts) {
+            const dx = p.x - cur.x,
+              dz = p.z - cur.z;
+            const d = Math.hypot(dx, dz);
+            if (d < STEP * 0.5 || d > R) continue;
+            dirv.set(dx / d, dz / d);
+            if (dirv.dot(heading2) < coneCos) continue;
+            cx += p.x;
+            cy += p.y;
+            cz += p.z;
+            cn++;
+          }
+        };
+        gather(cone);
+        if (cn === 0) {
+          // élargit le cône dans les virages serrés
+          cone = Math.cos(THREE.MathUtils.degToRad(115));
+          gather(cone);
+        }
+        if (cn === 0) break; // bout du chemin
+        const next = new THREE.Vector3(cx / cn, cy / cn, cz / cn);
+        const nd = new THREE.Vector2(next.x - cur.x, next.z - cur.z);
+        if (nd.length() < STEP * 0.3) break;
+        nd.normalize();
+        heading2.lerp(nd, 0.6).normalize();
+        cur = next;
+        samples.push(cur.clone());
+        if (
+          Math.hypot(cur.x - endPt.x, cur.z - endPt.z) <
+          STEP * 0.8
+        )
+          break;
+      }
+      samples.push(endPt.clone());
+    }
+    // garde-fou
+    if (samples.length < 2) {
+      const c = roadBox.getCenter(new THREE.Vector3());
+      samples.length = 0;
+      samples.push(
+        c.clone().add(new THREE.Vector3(-10, 0, 0)),
+        c.clone().add(new THREE.Vector3(10, 0, 0))
       );
     }
 
-    const roadBoxW = new THREE.Box3(wMin.clone(), wMax.clone());
-    const fullBoxW = new THREE.Box3(toWorld(box.min), toWorld(box.max));
+    const curve = new THREE.CatmullRomCurve3(
+      samples,
+      false,
+      "catmullrom",
+      0.5
+    );
 
-    return { group, eye, target, roadBox: roadBoxW, fullBox: fullBoxW };
+    const fullBox = new THREE.Box3(
+      new THREE.Vector3(
+        (box.min.x + offset.x) * s,
+        (box.min.y + offset.y) * s,
+        (box.min.z + offset.z) * s
+      ),
+      new THREE.Vector3(
+        (box.max.x + offset.x) * s,
+        (box.max.y + offset.y) * s,
+        (box.max.z + offset.z) * s
+      )
+    );
+
+    return { group, curve, samples, roadBox, fullBox };
   }, [scene]);
 }
 
-/* ── Modèle ──────────────────────────────────────────────────────────── */
+/* ── Modèle (+ rapport debug) ────────────────────────────────────────── */
 function Forest({
   layout,
   onReport,
@@ -164,80 +243,51 @@ function Forest({
     const f = (v: THREE.Vector3) =>
       `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
     onReport(
-      `eye0[${f(layout.eye[0])}] tgt0[${f(layout.target[0])}] ` +
-        `eyeN[${f(layout.eye[layout.eye.length - 1])}] ` +
-        `road[${f(layout.roadBox.min)} → ${f(layout.roadBox.max)}] ` +
-        `full[${f(layout.fullBox.min)} → ${f(layout.fullBox.max)}]`
+      `centerline ${layout.samples.length} pts · start[${f(
+        layout.samples[0]
+      )}] end[${f(layout.samples[layout.samples.length - 1])}]`
     );
   }, [layout, onReport]);
   return <primitive object={layout.group} />;
 }
 
-/* ── Rig caméra : suit le scroll le long des courbes ─────────────────── */
+/* ── Rig caméra : suit la centerline du chemin selon le scroll ───────── */
 function CameraRig({
   layout,
+  progress,
   previewT,
 }: {
   layout: Layout;
+  progress: React.MutableRefObject<number>;
   previewT: number | null;
 }) {
-  const scroll = useScroll();
-  const eyeCurve = useMemo(
-    () => new THREE.CatmullRomCurve3(layout.eye, false, "catmullrom", 0.5),
-    [layout]
-  );
-  const tgtCurve = useMemo(
-    () => new THREE.CatmullRomCurve3(layout.target, false, "catmullrom", 0.5),
-    [layout]
-  );
-  const pos = useRef(layout.eye[0].clone());
-  const look = useRef(layout.target[0].clone());
+  const pos = useRef(new THREE.Vector3());
+  const base = useRef(new THREE.Vector3());
+  const tan = useRef(new THREE.Vector3());
+  const look = useRef(new THREE.Vector3());
   const first = useRef(true);
 
   useFrame((state, dt) => {
-    const t = THREE.MathUtils.clamp(
-      previewT ?? scroll.offset,
-      0,
-      1
-    );
-    eyeCurve.getPoint(t, pos.current);
-    tgtCurve.getPoint(t, look.current);
-    // léger flottement organique
-    const bob = Math.sin(state.clock.elapsedTime * 0.6) * 0.12;
-    // snap immédiat à la 1re frame (et en preview) pour éviter le flash d'entrée
+    const raw = previewT ?? progress.current;
+    const p = THREE.MathUtils.clamp(raw, 0, 1);
+    const t = THREE.MathUtils.lerp(START_INSET, 1 - END_INSET, p);
+    layout.curve.getPoint(t, base.current);
+    layout.curve.getTangent(t, tan.current); // direction de marche
+    pos.current.copy(base.current);
+    pos.current.y += EYE_HEIGHT;
+    // vise DEVANT le long de la tangente (jamais dégénéré, même en fin de course)
+    look.current.copy(base.current).addScaledVector(tan.current, LOOK_DIST);
+    look.current.y += EYE_HEIGHT - LOOK_DROP;
+
+    const bob = Math.sin(state.clock.elapsedTime * 0.6) * 0.1;
     const k = previewT != null || first.current ? 1 : 1 - Math.pow(0.001, dt);
     first.current = false;
-    state.camera.position.lerp(
-      pos.current.clone().setY(pos.current.y + bob),
-      k
-    );
+    const desired = pos.current.clone();
+    desired.y += bob;
+    state.camera.position.lerp(desired, k);
     state.camera.lookAt(look.current);
   });
 
-  return null;
-}
-
-/* ── Lecture position caméra en debug (cale les WAYPOINTS) ───────────── */
-function DebugReadout() {
-  const { camera } = useThree();
-  const [, force] = useState(0);
-  useFrame(() => force((n) => (n + 1) % 1000));
-  const p = camera.position;
-  return (
-    <group>
-      {/* rien dans la scène ; l'overlay HTML lit window via cet effet */}
-      <DebugHud x={p.x} y={p.y} z={p.z} />
-    </group>
-  );
-}
-function DebugHud({ x, y, z }: { x: number; y: number; z: number }) {
-  useEffect(() => {
-    const el = document.getElementById("dbg");
-    if (el)
-      el.textContent = `eye [${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(
-        1
-      )}]`;
-  }, [x, y, z]);
   return null;
 }
 
@@ -245,121 +295,237 @@ function DebugHud({ x, y, z }: { x: number; y: number; z: number }) {
 function Atmosphere({ debug }: { debug: boolean }) {
   return (
     <>
-      <hemisphereLight args={["#cfe3ff", "#1a1726", debug ? 2.5 : 0.9]} />
-      {debug && <ambientLight intensity={1.5} />}
+      {/* lumière de jour / golden hour, comme les réfs Départ/Arrivée */}
+      <hemisphereLight args={["#dCEBFF", "#5a5036", debug ? 2.6 : 1.5]} />
+      <ambientLight intensity={debug ? 1.5 : 0.5} />
       <directionalLight
-        position={[20, 40, 10]}
-        intensity={1.6}
-        color="#ffe9c7"
+        position={[30, 50, 18]}
+        intensity={2.6}
+        color="#ffe7bd"
       />
-      <directionalLight
-        position={[-15, 20, -20]}
-        intensity={0.5}
-        color="#9d5bff"
-      />
-      {!debug && <fog attach="fog" args={["#0b0a12", 30, 150]} />}
+      <directionalLight position={[-20, 24, -24]} intensity={0.6} color="#bcd0ff" />
+      {!debug && <fog attach="fog" args={["#aeb6c6", 60, 230]} />}
     </>
   );
 }
 
-/* ── Overlay HTML synchronisé au scroll (iris + bulles + CTA) ─────────── */
-function Overlay() {
+/* ── Lecture position caméra (debug) ─────────────────────────────────── */
+function DebugReadout() {
+  const { camera } = useThree();
+  const [, force] = useState(0);
+  useFrame(() => force((n) => (n + 1) % 1000));
+  useEffect(() => {
+    const el = document.getElementById("dbg");
+    const p = camera.position;
+    if (el)
+      el.textContent = `eye [${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}]`;
+  });
+  return null;
+}
+
+/* ── Debug : surligne les meshes de route pour tracer le chemin ──────── */
+function RoadHighlight({ group }: { group: THREE.Group }) {
+  useEffect(() => {
+    const touched: { m: THREE.MeshStandardMaterial; e: THREE.Color; i: number }[] = [];
+    group.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mat = m.material as THREE.MeshStandardMaterial;
+      const name = `${o.name} ${mat?.name ?? ""}`;
+      if (mat && ROAD_RE.test(name)) {
+        touched.push({ m: mat, e: mat.emissive.clone(), i: mat.emissiveIntensity });
+        mat.emissive = new THREE.Color("#00e5ff");
+        mat.emissiveIntensity = 1.4;
+      }
+    });
+    return () => {
+      touched.forEach(({ m, e, i }) => {
+        m.emissive = e;
+        m.emissiveIntensity = i;
+      });
+    };
+  }, [group]);
+  return null;
+}
+
+/* ── Scène : layout + orchestration (prod / debug) ───────────────────── */
+function Scene({
+  debug,
+  progress,
+  previewT,
+  onReport,
+}: {
+  debug: boolean;
+  progress: React.MutableRefObject<number>;
+  previewT: number | null;
+  onReport?: (s: string) => void;
+}) {
+  const layout = useForestLayout();
   return (
-    <Scroll html>
-      <div className="fl-overlay">
-        {/* Intro */}
-        <section className="fl-step fl-intro">
-          <img
-            src="/iris_turquoise_contour_decoupe.svg"
-            alt="Iris"
-            className="fl-iris"
-          />
-          <h1 className="fl-title">
-            <span className="grad">Iris</span>
-          </h1>
-          <p className="fl-lede">Options, anywhere.</p>
-          <p className="fl-hint">scroll ↓ pour suivre le chemin</p>
-        </section>
-
-        {/* Bulles : une option par palier */}
-        <Bubble
-          side="left"
-          tag="01 · Cash-Secured Put"
-          star
-          title="Tu déposes, tu gagnes."
-          body="Tu mets de l'USDC de côté et tu touches un rendement. Pire cas : tu rachètes l'actif moins cher qu'aujourd'hui."
-        />
-        <Bubble
-          side="right"
-          tag="02 · Covered Call"
-          title="Tu as déjà un actif ?"
-          body="Gagne un petit bonus dessus, tranquillement, pendant que tu le gardes."
-        />
-        <Bubble
-          side="left"
-          tag="03 · Buy Call"
-          title="Tu paries sur la hausse."
-          body="Si ça monte, tu gagnes. Si ça baisse, tu ne perds que ton ticket d'entrée. Rien de plus."
-        />
-
-        {/* Fin du chemin : CTA */}
-        <section className="fl-step fl-cta">
-          <img
-            src="/iris_turquoise_contour_decoupe.svg"
-            alt=""
-            className="fl-iris fl-iris-big"
-          />
-          <h2 className="fl-cta-title">
-            Une seule brique. <span className="grad">Zéro maths.</span>
-          </h2>
-          <p className="fl-lede">
-            Single-leg, entièrement collatéralisé. Pas de marge, pas de
-            liquidation.
-          </p>
-          <div className="fl-actions">
-            <Link href="/docs" className="btn ghost lg">
-              Docs
-            </Link>
-            <Link href="/learn" className="btn ghost lg">
-              Learn
-            </Link>
-            <Link href="/app" className="btn lg">
-              Launch app →
-            </Link>
-          </div>
-          <p className="fl-foot">
-            Built on Derive · ETHGlobal NYC · fully-collateralised single-leg
-            options
-          </p>
-        </section>
-      </div>
-    </Scroll>
+    <>
+      <Forest layout={layout} onReport={onReport} />
+      {debug ? (
+        <>
+          <RoadHighlight group={layout.group} />
+          <OrbitControls makeDefault target={[0, 0, 0]} />
+          <axesHelper args={[80]} />
+          <box3Helper args={[layout.fullBox, new THREE.Color("#9d5bff")]} />
+          <box3Helper args={[layout.roadBox, new THREE.Color("#3ddc97")]} />
+          <Line points={layout.samples} color="#5cf2a6" lineWidth={3} />
+          {/* orientation : +X rouge, +Z bleu (pour transcrire le Chemin) */}
+          <mesh position={[55, 30, 0]}>
+            <sphereGeometry args={[5, 16, 16]} />
+            <meshBasicMaterial color="#ff3b3b" depthTest={false} />
+          </mesh>
+          <mesh position={[0, 30, 55]}>
+            <sphereGeometry args={[5, 16, 16]} />
+            <meshBasicMaterial color="#3b6bff" depthTest={false} />
+          </mesh>
+          {layout.samples.map((p, i) => (
+            <mesh key={i} position={p}>
+              <sphereGeometry args={[i === 0 ? 3 : 1.6, 12, 12]} />
+              <meshBasicMaterial
+                color={i === 0 ? "#5cf2a6" : i === layout.samples.length - 1 ? "#ff6b6b" : "#9d5bff"}
+                depthTest={false}
+              />
+            </mesh>
+          ))}
+        </>
+      ) : (
+        <CameraRig layout={layout} progress={progress} previewT={previewT} />
+      )}
+    </>
   );
 }
 
-function Bubble({
-  side,
-  tag,
-  title,
-  body,
-  star,
-}: {
-  side: "left" | "right";
-  tag: string;
-  title: string;
-  body: string;
-  star?: boolean;
-}) {
+/* ════════════════════════════════════════════════════════════════════
+   OVERLAY ÉDUCATIF — 10 bulles : ce qu'est une option + comment marche Iris
+   ════════════════════════════════════════════════════════════════════ */
+type Step =
+  | { kind: "intro" }
+  | { kind: "cta" }
+  | {
+      kind: "bubble";
+      n: string;
+      title: string;
+      body: string;
+      star?: boolean;
+    };
+
+const STEPS: Step[] = [
+  { kind: "intro" },
+  {
+    kind: "bubble",
+    n: "01",
+    title: "Une option, c'est quoi ?",
+    body: "Un contrat qui donne le droit — pas l'obligation — d'acheter ou de vendre un actif à un prix fixé d'avance, avant une date donnée.",
+  },
+  {
+    kind: "bubble",
+    n: "02",
+    title: "La prime",
+    body: "Celui qui vend ce droit est payé tout de suite : la prime. C'est comme une assurance — tu encaisses aujourd'hui pour couvrir quelqu'un demain.",
+  },
+  {
+    kind: "bubble",
+    n: "03",
+    title: "Call ou Put",
+    body: "Un call = le droit d'acheter (parier sur la hausse). Un put = le droit de vendre (se protéger d'une baisse). Deux outils, une même mécanique.",
+  },
+  {
+    kind: "bubble",
+    n: "04",
+    title: "Pourquoi ça fait peur",
+    body: "Sur la plupart des plateformes : effet de levier, appels de marge, liquidations. Une option peut alors te coûter bien plus que ta mise.",
+  },
+  {
+    kind: "bubble",
+    n: "05",
+    title: "L'approche Iris",
+    body: "Une seule jambe, entièrement collatéralisée. Zéro marge, zéro liquidation. Le pire scénario est connu et plafonné dès le départ.",
+  },
+  {
+    kind: "bubble",
+    n: "06",
+    star: true,
+    title: "Cash-Secured Put",
+    body: "Tu déposes de l'USDC et tu touches un rendement régulier. Pire cas : tu achètes l'actif moins cher qu'aujourd'hui. Notre produit phare.",
+  },
+  {
+    kind: "bubble",
+    n: "07",
+    title: "Covered Call",
+    body: "Tu détiens déjà un actif ? Gagne un bonus en acceptant de le vendre un peu plus haut. Un loyer sur ce que tu possèdes déjà.",
+  },
+  {
+    kind: "bubble",
+    n: "08",
+    title: "Buy Call",
+    body: "Tu paries sur la hausse. Ton risque est plafonné à la prime payée — jamais un centime de plus, quoi qu'il arrive.",
+  },
+  {
+    kind: "bubble",
+    n: "09",
+    title: "Cross-chain, sans friction",
+    body: "Dépose n'importe quel token, depuis n'importe quelle chaîne. Il arrive en USDC sur Derive, prêt à travailler. Tu ne gères jamais la plomberie.",
+  },
+  {
+    kind: "bubble",
+    n: "10",
+    title: "Sous le capot",
+    body: "Tes ordres sont matchés sur l'orderbook permissionless de Derive, puis réglés on-chain. Tout est transparent et vérifiable.",
+  },
+  { kind: "cta" },
+];
+
+function Overlay() {
   return (
-    <section className={`fl-step fl-bubble ${side}`}>
-      <div className="fl-card">
-        <span className="fl-tag">
-          {tag} {star && <span className="fl-star">★</span>}
-        </span>
-        <h3 className="fl-card-title">{title}</h3>
-        <p className="fl-card-body">{body}</p>
-      </div>
-    </section>
+    <div className="fl-overlay">
+      {STEPS.map((step, i) => {
+        if (step.kind === "intro")
+          return (
+            <section key={i} className="fl-step fl-intro">
+              <img src="/iris_turquoise_contour_decoupe.svg" alt="Iris" className="fl-intro-iris" />
+              <h1 className="fl-title">
+                <span className="grad">Iris</span>
+              </h1>
+              <p className="fl-lede">Les options, expliquées simplement.</p>
+              <p className="fl-hint">descends le chemin ↓</p>
+            </section>
+          );
+        if (step.kind === "cta")
+          return (
+            <section key={i} className="fl-step fl-cta">
+              <img src="/iris_turquoise_contour_decoupe.svg" alt="" className="fl-cta-iris" />
+              <h2 className="fl-cta-title">
+                Prêt à <span className="grad">faire travailler</span> ton capital ?
+              </h2>
+              <p className="fl-lede">
+                Single-leg, entièrement collatéralisé. Pas de marge, pas de liquidation.
+              </p>
+              <div className="fl-actions">
+                <Link href="/docs" className="btn ghost lg">Docs</Link>
+                <Link href="/learn" className="btn ghost lg">Learn</Link>
+                <Link href="/app" className="btn lg">Launch app →</Link>
+              </div>
+              <p className="fl-foot">
+                Built on Derive · ETHGlobal NYC · fully-collateralised single-leg options
+              </p>
+            </section>
+          );
+        return (
+          <section key={i} className="fl-step fl-bubble">
+            <div className="fl-card">
+              <span className="fl-tag">
+                {step.n} {step.star && <span className="fl-star">★</span>}
+              </span>
+              <h3 className="fl-card-title">{step.title}</h3>
+              <p className="fl-card-body">{step.body}</p>
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -376,11 +542,7 @@ function LoadingScreen() {
   if (gone) return null;
   return (
     <div className={`fl-loader ${!active && progress >= 100 ? "done" : ""}`}>
-      <img
-        src="/iris_turquoise_contour_decoupe.svg"
-        alt="Iris"
-        className="fl-loader-iris"
-      />
+      <img src="/iris_turquoise_contour_decoupe.svg" alt="Iris" className="fl-loader-iris" />
       <div className="fl-loader-bar">
         <span style={{ width: `${progress}%` }} />
       </div>
@@ -389,99 +551,93 @@ function LoadingScreen() {
   );
 }
 
-/* ── Scène : calcule le layout (route auto) et orchestre tout ────────── */
-function Scene({
-  debug,
-  previewT,
-  onReport,
-}: {
-  debug: boolean;
-  previewT: number | null;
-  onReport?: (s: string) => void;
-}) {
-  const layout = useForestLayout();
-  return (
-    <>
-      {debug ? (
-        <>
-          <Forest layout={layout} onReport={onReport} />
-          <OrbitControls makeDefault target={[0, 0, 0]} />
-          <axesHelper args={[80]} />
-          <box3Helper args={[layout.fullBox, new THREE.Color("#9d5bff")]} />
-          <box3Helper args={[layout.roadBox, new THREE.Color("#3ddc97")]} />
-          {/* marqueurs entrée (cyan) / sortie (rouge) du trajet */}
-          {layout.eye.map((p, i) => (
-            <mesh key={i} position={p}>
-              <sphereGeometry args={[i === 0 ? 5 : 3, 16, 16]} />
-              <meshBasicMaterial
-                color={i === 0 ? "#5cf2a6" : i === layout.eye.length - 1 ? "#ff6b6b" : "#9d5bff"}
-                depthTest={false}
-              />
-            </mesh>
-          ))}
-        </>
-      ) : (
-        <ScrollControls pages={PAGES} damping={0.28}>
-          <Forest layout={layout} onReport={onReport} />
-          <CameraRig layout={layout} previewT={previewT} />
-          <Overlay />
-        </ScrollControls>
-      )}
-    </>
-  );
-}
-
 /* ── Racine ──────────────────────────────────────────────────────────── */
 export default function ForestExperience() {
   const [debug, setDebug] = useState(false);
   const [previewT, setPreviewT] = useState<number | null>(null);
   const [report, setReport] = useState("");
+  const progress = useRef(0);
+
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     setDebug(q.has("debug"));
     const p = q.get("preview");
     setPreviewT(p != null ? Math.max(0, Math.min(1, parseFloat(p))) : null);
+
+    const onScroll = () => {
+      const max = document.body.scrollHeight - window.innerHeight;
+      progress.current = max > 0 ? window.scrollY / max : 0;
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    // debug : ?scroll=<0..1> scrolle réellement la page (vérifie bulles + caméra)
+    const sc = q.get("scroll");
+    if (sc != null) {
+      const frac = Math.max(0, Math.min(1, parseFloat(sc)));
+      setTimeout(() => {
+        const max = document.body.scrollHeight - window.innerHeight;
+        window.scrollTo(0, frac * max);
+      }, 900);
+    }
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
+
   const showReport = debug || previewT != null;
 
   return (
-    <div className="fl-root">
+    <div className="fl-page" style={{ height: debug ? "100vh" : `${PAGES * 100}vh` }}>
       <div className="fl-bg" />
       <div className="fl-vignette" />
-      <Canvas
-        className="fl-canvas"
-        dpr={[1, 1.6]}
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        camera={{
-          fov: 52,
-          near: 0.1,
-          far: 600,
-          position: debug ? [0, 190, 0.1] : [0, 5, 55],
-        }}
-      >
-        <Atmosphere debug={debug} />
-        <Suspense fallback={null}>
-          <Scene debug={debug} previewT={previewT} onReport={setReport} />
-          <Preload all />
-        </Suspense>
-        {debug && <DebugReadout />}
-        <AdaptiveDpr pixelated />
-      </Canvas>
+      <div className={`fl-canvas-wrap ${debug ? "interactive" : ""}`}>
+        <Canvas
+          dpr={[1, 1.6]}
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+          camera={{
+            fov: 52,
+            near: 0.1,
+            far: 600,
+            position: debug ? [0, 190, 0.1] : [0, 5, 30],
+          }}
+        >
+          <Atmosphere debug={debug} />
+          <Suspense fallback={null}>
+            <Scene
+              debug={debug}
+              progress={progress}
+              previewT={previewT}
+              onReport={setReport}
+            />
+            <Preload all />
+          </Suspense>
+          {debug && <DebugReadout />}
+          <AdaptiveDpr pixelated />
+        </Canvas>
+      </div>
+
+      {!debug && (
+        <img src="/iris_turquoise_contour_decoupe.svg" alt="" className="fl-iris-grow" aria-hidden />
+      )}
+      {!debug && <Overlay />}
+
       {debug && <div id="dbg" className="fl-dbg">eye …</div>}
       {showReport && report && (
         <div
           style={{
-            position: "absolute",
+            position: "fixed",
             top: 8,
             left: 8,
             right: 8,
             zIndex: 30,
             fontFamily: "monospace",
-            fontSize: 22,
-            lineHeight: 1.5,
+            fontSize: 20,
             color: "#5cf2a6",
             background: "rgba(0,0,0,0.85)",
-            padding: "8px 12px",
+            padding: "6px 10px",
             whiteSpace: "normal",
             wordBreak: "break-all",
           }}
