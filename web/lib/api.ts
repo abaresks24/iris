@@ -1,5 +1,6 @@
 /** Typed client for our Derive signer backend. */
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8799";
+// Empty default → relative /api/* (the Next API routes in this same app).
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export type PresetId = "cash_secured_put" | "covered_call" | "long_call";
 
