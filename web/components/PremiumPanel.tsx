@@ -8,8 +8,7 @@ import { IrisLoader } from "./IrisLoader";
 import { TokenIcon } from "./TokenIcon";
 
 /**
- * "Premium" — the upfront yield the connected wallet has collected. The hook of
- * the product: you get paid the moment your deposit fills.
+ * "Premium" — the upfront yield the connected wallet has collected on-chain.
  */
 export function PremiumPanel() {
   const { ready, authenticated } = usePrivy();
@@ -17,14 +16,14 @@ export function PremiumPanel() {
   const trader = wallets[0]?.address;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["arcPositions", trader],
-    queryFn: () => api.arcPositions(trader!),
+    queryKey: ["positions", trader],
+    queryFn: () => api.positions(trader!),
     enabled: !!trader,
     refetchInterval: 10000,
   });
 
   const positions = data?.positions ?? [];
-  const earned = positions.reduce((s, p) => s + (p.premium || 0), 0);
+  const earned = data?.premiumTotal ?? 0;
   const nowSec = Date.now() / 1000;
   const upcoming = positions.filter((p) => p.expiry > nowSec).map((p) => (p.expiry - nowSec) / 86400);
   const nextDays = upcoming.length ? Math.min(...upcoming) : null;
@@ -80,12 +79,12 @@ export function PremiumPanel() {
               <tr><th>Asset</th><th>Strategy</th><th>Strike</th><th className="right">Premium</th></tr>
             </thead>
             <tbody>
-              {positions.map((p) => (
-                <tr key={p.id}>
+              {positions.map((p, i) => (
+                <tr key={`${p.source}-${i}`}>
                   <td>
                     <span className="asset-chip">
-                      <TokenIcon currency={p.instrument.split("-")[0]} size={20} />
-                      {p.instrument.split("-")[0]}
+                      <TokenIcon currency={p.asset} size={20} />
+                      {p.asset}
                     </span>
                   </td>
                   <td>{p.kind}</td>

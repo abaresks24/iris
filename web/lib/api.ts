@@ -105,7 +105,25 @@ export const api = {
     get<{ contract: string; explorer: string; positions: ArcPosition[] }>(
       `/api/arc/positions?trader=${trader}`,
     ),
+  positions: (trader: string) =>
+    get<{ explorer: string; vault: string; positions: PositionView[]; premiumTotal: number }>(
+      `/api/positions?trader=${trader}`,
+    ),
 };
+
+export interface PositionView {
+  source: "vault" | "derive";
+  asset: string;
+  label: string;
+  kind: string;
+  strike: number;
+  size: number;
+  premium: number;
+  collateral: number | null;
+  time: number;
+  expiry: number;
+  real: boolean;
+}
 
 export interface ArcPosition {
   id: number;
