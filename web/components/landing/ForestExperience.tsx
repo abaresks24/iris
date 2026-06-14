@@ -527,9 +527,6 @@ function Overlay() {
                 <Link href="/learn" className="btn ghost lg">Learn</Link>
                 <Link href="/app" className="btn lg">Launch app →</Link>
               </div>
-              <p className="fl-foot">
-                Built on Derive · ETHGlobal NYC · fully-collateralised single-leg options
-              </p>
             </section>
           );
         return (
