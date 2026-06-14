@@ -1,7 +1,6 @@
 "use client";
 
 import { ArcBalanceCard } from "@/components/ArcBalanceCard";
-import { FundingPanel } from "@/components/FundingPanel";
 import { PositionsPanel } from "@/components/PositionsPanel";
 import { HistoryPanel } from "@/components/HistoryPanel";
 
@@ -15,9 +14,6 @@ export default function DashboardPage() {
 
       <div className="section-title">Balance</div>
       <ArcBalanceCard />
-
-      <div className="section-title">Fund from another chain · LI.FI</div>
-      <FundingPanel />
 
       <div className="section-title">Positions</div>
       <PositionsPanel />
