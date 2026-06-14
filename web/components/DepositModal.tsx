@@ -42,7 +42,8 @@ export function DepositModal({
     return data.candidates[0];
   }, [data, chosen]);
 
-  const upfront = selected ? selected.premium * amount : 0;
+  const isBuy = preset === "long_call";
+  const upfront = selected ? selected.premium * amount : 0; // earned (sell) or paid (buy)
   const collateral = selected ? selected.collateralRequired * amount : 0;
 
   async function confirm() {
@@ -65,7 +66,7 @@ export function DepositModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="flex between">
-          <h3>Earn on {currency}</h3>
+          <h3>{isBuy ? `Buy ${currency} Call` : `Earn on ${currency}`}</h3>
           <span className="badge">{label}</span>
         </div>
 
@@ -84,7 +85,9 @@ export function DepositModal({
               <div className="numeric" style={{ fontSize: 40, color: "var(--color-accent)", lineHeight: 1 }}>
                 {usd(upfront)}
               </div>
-              <div className="muted small">earned upfront · {pct(selected.aprPct)} APR</div>
+              <div className="muted small">
+                {isBuy ? "premium to pay · max loss" : `earned upfront · ${pct(selected.aprPct)} APR`}
+              </div>
             </div>
 
             <div className="field" style={{ margin: "16px 0" }}>
@@ -99,11 +102,11 @@ export function DepositModal({
             </div>
 
             <div className="flex between small">
-              <span className="muted">You lock</span>
-              <b>{num(collateral)} {selected.collateralAsset === "USDC" ? "USDC" : currency}</b>
+              <span className="muted">{isBuy ? "You pay" : "You lock"}</span>
+              <b>{isBuy ? usd(upfront) : `${num(collateral)} ${selected.collateralAsset === "USDC" ? "USDC" : currency}`}</b>
             </div>
             <div className="flex between small" style={{ marginTop: 6 }}>
-              <span className="muted">Effective entry / breakeven</span>
+              <span className="muted">{isBuy ? "Breakeven (profit above)" : "Effective entry / breakeven"}</span>
               <span>{usd(selected.breakeven)}</span>
             </div>
             <div className="flex between small" style={{ marginTop: 6 }}>
@@ -151,7 +154,7 @@ export function DepositModal({
             <div className="divider" />
 
             {status === "done" ? (
-              <p className="ok small">✓ Earning on Derive · <span className="mono">{message}</span></p>
+              <p className="ok small">✓ {isBuy ? "Bought" : "Earning"} on Derive · <span className="mono">{message}</span></p>
             ) : status === "error" ? (
               <p className="err small">{message}</p>
             ) : null}
@@ -164,7 +167,7 @@ export function DepositModal({
                 <button className="btn" onClick={onDone}>View dashboard</button>
               ) : (
                 <button className="btn" onClick={confirm} disabled={status === "sending"}>
-                  {status === "sending" ? <IrisLoader /> : `Earn ${usd(upfront)} upfront`}
+                  {status === "sending" ? <IrisLoader /> : isBuy ? `Buy for ${usd(upfront)}` : `Earn ${usd(upfront)} upfront`}
                 </button>
               )}
             </div>

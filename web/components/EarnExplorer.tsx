@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { api, type PresetId } from "@/lib/api";
-import { pct } from "@/lib/format";
+import { pct, usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { DepositModal } from "./DepositModal";
 
@@ -20,10 +20,12 @@ const ASSETS = ["ETH", "BTC", "SOL"];
 const STRATS: { preset: PresetId; label: string }[] = [
   { preset: "cash_secured_put", label: "Cash-Secured Put" },
   { preset: "covered_call", label: "Covered Call" },
+  { preset: "long_call", label: "Buy Call" },
 ];
 const CAP: Record<string, number> = {
   "ETH-cash_secured_put": 38, "BTC-cash_secured_put": 61, "SOL-cash_secured_put": 19,
   "ETH-covered_call": 24, "BTC-covered_call": 47, "SOL-covered_call": 12,
+  "ETH-long_call": 55, "BTC-long_call": 40, "SOL-long_call": 30,
 };
 
 const OPPS: Opp[] = ASSETS.flatMap((currency) =>
@@ -35,7 +37,7 @@ const OPPS: Opp[] = ASSETS.flatMap((currency) =>
   })),
 );
 
-type Filter = "all" | "cash_secured_put" | "covered_call";
+type Filter = "all" | "cash_secured_put" | "covered_call" | "long_call";
 type SortKey = "asset" | "type" | "maxApr";
 
 export function EarnExplorer() {
@@ -57,11 +59,13 @@ export function EarnExplorer() {
     return OPPS.map((o, i) => {
       const r = results[i];
       const aprs = (r.data?.candidates ?? []).map((c) => c.aprPct ?? 0).filter((a) => a > 0);
+      const prems = (r.data?.candidates ?? []).map((c) => c.premium ?? 0).filter((p) => p > 0);
       return {
         ...o,
         loading: r.isLoading,
         maxApr: aprs.length ? Math.max(...aprs) : null,
         minApr: aprs.length ? Math.min(...aprs) : null,
+        prem: prems.length ? Math.min(...prems) : null,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,6 +98,7 @@ export function EarnExplorer() {
     { id: "all", label: "All" },
     { id: "cash_secured_put", label: "Cash-Secured Puts" },
     { id: "covered_call", label: "Covered Calls" },
+    { id: "long_call", label: "Buy Calls" },
   ];
 
   return (
@@ -131,9 +136,15 @@ export function EarnExplorer() {
                 <td style={{ fontWeight: 600, color: "var(--color-ink)" }}>{r.currency}</td>
                 <td>{r.label}</td>
                 <td style={{ color: "var(--color-accent)", fontWeight: 600 }}>
-                  {r.loading ? <IrisLoader size={14} /> : pct(r.maxApr, 1)}
+                  {r.loading ? (
+                    <IrisLoader size={14} />
+                  ) : r.preset === "long_call" ? (
+                    r.prem != null ? usd(r.prem) : "—"
+                  ) : (
+                    pct(r.maxApr, 1)
+                  )}
                 </td>
-                <td>{r.loading ? "" : pct(r.minApr, 1)}</td>
+                <td>{r.loading ? "" : r.preset === "long_call" ? "premium" : pct(r.minApr, 1)}</td>
                 <td>
                   <div className="flex" style={{ gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 60, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
