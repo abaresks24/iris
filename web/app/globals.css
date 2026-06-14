@@ -1,37 +1,40 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════
-   IRIS DESIGN SYSTEM — source of truth
-   Achromatic canvas; colour only via the single "spectrum" gradient,
-   reserved for flow / focus / activity states.
+   IRIS DESIGN SYSTEM — "iris dans le sous-bois"
+   Forest-understory night canvas; iris violet anchors interaction, leaf
+   green is the secondary, golden amber (the iris "beard") is the rare
+   highlight. The spectrum gradient = refracted light through the canopy.
    ════════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* Surfaces — black canvas (iris on a night ground) */
-  --color-ink:        #060509;   /* fond de base (noir) */
-  --color-surface:    #110F18;   /* cartes */
-  --color-surface-2:  #1A1726;   /* élévation */
+  /* Surfaces — forest-understory night (iris on a mossy forest floor) */
+  --color-ink:        #08140E;   /* fond de base (nuit de sous-bois) */
+  --color-surface:    #102018;   /* cartes (mousse) */
+  --color-surface-2:  #18291F;   /* élévation */
 
-  /* Texte (clair sur noir, blanc légèrement violacé) */
-  --color-bone:       #EDEAF6;   /* primaire */
-  --color-graphite:   #9C97B2;   /* secondaire */
-  --color-muted:      #65607A;   /* tertiaire / désactivé */
+  /* Texte (brume claire sur sous-bois, blanc légèrement vert) */
+  --color-bone:       #EAF1EC;   /* primaire */
+  --color-graphite:   #93AC9E;   /* secondaire (sauge) */
+  --color-muted:      #5E7669;   /* tertiaire / désactivé */
 
-  /* Filets */
-  --color-hairline:        rgba(237,234,246,0.08);
-  --color-hairline-strong: rgba(237,234,246,0.15);
+  /* Filets (teintés brume) */
+  --color-hairline:        rgba(234,241,236,0.08);
+  --color-hairline-strong: rgba(234,241,236,0.16);
 
-  /* Iris — violet → vert (dégradé signature, fills only) */
+  /* Iris — violet → or → vert (dégradé signature, fills only) */
   --color-spec-indigo:  #6D4AFF;
   --color-spec-violet:  #9D5BFF;
-  --color-spec-magenta: #B47CFF;
-  --color-spec-amber:   #36E0A0;
+  --color-spec-magenta: #C89BFF;
+  --color-spec-gold:    #F5C451;
+  --color-spec-amber:   #6EE6A8;
   --color-spec-cyan:    #5CF2A6;
 
   /* Interactif + sémantique trading */
-  --color-accent:    #9D5BFF;    /* violet iris — anchor d'interaction */
-  --color-accent-2:  #3DDC97;    /* vert iris — accent secondaire */
-  --color-positive:  #3DDC97;    /* hausse / gain — vert iris */
+  --color-accent:    #9D5BFF;    /* violet iris — pétales, anchor d'interaction */
+  --color-accent-2:  #3DDC97;    /* vert feuille — accent secondaire */
+  --color-gold:      #F5C451;    /* ambre doré — la "barbe" de l'iris (accent rare) */
+  --color-positive:  #3DDC97;    /* hausse / gain */
   --color-negative:  #FF6B6B;    /* baisse / perte — réservé au P&L */
 
   /* Rayons */
@@ -39,17 +42,17 @@
   --radius:    14px;
   --radius-lg: 20px;
 
-  /* Polices */
-  --font-sans: var(--font-geist-sans), "Inter Tight", system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: var(--font-display), var(--font-geist-sans), system-ui, sans-serif;
+  /* Polices — Rysk type system (DM Sans / DM Mono / Bodoni Moda serif) */
+  --font-sans: var(--font-sans-src), "DM Sans", system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), "DM Mono", ui-monospace, monospace;
+  --font-display: var(--font-display), "Bodoni Moda", Georgia, serif;
 }
 
 :root {
   /* Le dégradé signature — multicolore vif, FILLS uniquement (jamais les contours) */
   --spectrum: linear-gradient(100deg,
-    var(--color-spec-indigo), var(--color-spec-violet),
-    var(--color-spec-magenta), var(--color-spec-amber), var(--color-spec-cyan));
+    var(--color-spec-indigo), var(--color-spec-violet), var(--color-spec-magenta),
+    var(--color-spec-gold), var(--color-spec-amber), var(--color-spec-cyan));
 
   /* Motion — easing « réfraction » expressif */
   --ease-iris: cubic-bezier(0.16, 1, 0.3, 1);
@@ -133,7 +136,7 @@ a:hover { color: var(--color-accent); }
 .appnav, .doc-topbar, .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 22px; border-bottom: 1px solid var(--color-hairline);
-  position: sticky; top: 0; z-index: 20; background: rgba(6,5,9,0.82); backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 20; background: rgba(8,20,14,0.78); backdrop-filter: blur(10px);
 }
 .appnav-links { display: flex; gap: 4px; }
 .appnav-link { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 14px; color: var(--color-graphite); border: 1px solid transparent; cursor: pointer; transition: color var(--dur-fast) var(--ease-iris); }
@@ -230,26 +233,7 @@ a:hover { color: var(--color-accent); }
 .iris-pupil { position: absolute; inset: 30%; border-radius: 50%; background: radial-gradient(circle at 50% 50%, var(--color-accent), var(--color-ink) 72%); animation: irisPulse 1.4s ease-in-out infinite; }
 @keyframes irisPulse { 0%,100% { transform: scale(0.78); opacity: 0.7; } 50% { transform: scale(1.05); opacity: 1; } }
 
-/* Landing — black canvas, iris video + violet/green glow */
-.landing {
-  position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column;
-  background: var(--color-ink);
-}
-.hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0.5; }
-.hero-scrim {
-  position: absolute; inset: 0; z-index: 1;
-  background:
-    radial-gradient(60% 50% at 16% 18%, color-mix(in srgb, var(--color-spec-violet) 38%, transparent), transparent 70%),
-    radial-gradient(60% 55% at 84% 82%, color-mix(in srgb, var(--color-spec-amber) 32%, transparent), transparent 70%),
-    radial-gradient(120% 100% at 50% 30%, rgba(6,5,9,0.30), rgba(6,5,9,0.82) 78%, var(--color-ink) 100%);
-}
-.landing-inner { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; gap: 22px; }
-.landing-logo { height: 84px; width: auto; }
-.landing-title { font-family: var(--font-display); font-size: clamp(3rem, 8vw, 5.5rem); font-weight: 800; margin: 0; letter-spacing: -0.03em; color: var(--color-bone); }
-.landing-title .grad { background: var(--spectrum); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.landing-tagline { font-size: 18px; color: var(--color-graphite); max-width: 580px; margin: 0; line-height: 1.55; }
-.landing-actions { display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
-.landing-foot { position: relative; z-index: 2; text-align: center; padding: 18px; color: var(--color-muted); font-size: 12px; border-top: 1px solid var(--color-hairline); font-family: var(--font-mono); }
+/* (ancienne landing vidéo supprimée — remplacée par la landing 3D `.fl-*`) */
 
 .hero-wrap { position: relative; overflow: hidden; }
 .hero h1 { font-size: 44px; margin: 0 0 14px; font-weight: 600; letter-spacing: -0.02em; }
@@ -296,12 +280,8 @@ a:hover { color: var(--color-accent); }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th, .table td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--color-hairline); }
 .table th { color: var(--color-graphite); font-family: var(--font-mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-.table td { color: var(--color-bone); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.table tr:hover td { background: var(--color-surface); }
-
-
 /* ════════════════════════════════════════════════════════════════════
-   LANDING 3D — descente du chemin forestier (scroll natif)
+   LANDING 3D — forest path walk (native scroll)
    ════════════════════════════════════════════════════════════════════ */
 .fl-page { position: relative; width: 100%; background: var(--color-ink); }
 
@@ -364,7 +344,7 @@ a:hover { color: var(--color-accent); }
 }
 .fl-tag {
   display: flex; align-items: center; gap: 12px;
-  font-family: var(--font-rysk-mono), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   color: #FFD049;
 }
@@ -374,13 +354,13 @@ a:hover { color: var(--color-accent); }
   font-size: 10.5px; letter-spacing: 0.1em; font-weight: 500;
 }
 .fl-card-title {
-  font-family: var(--font-rysk-serif), Georgia, serif;
+  font-family: var(--font-display), Georgia, serif;
   font-weight: 600; font-size: clamp(1.7rem, 3.8vw, 2.5rem);
   line-height: 1.08; letter-spacing: -0.005em;
   color: #eee9dd; margin: 16px 0 14px;
 }
 .fl-card-body {
-  font-family: var(--font-rysk-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   color: #cfcabd; font-size: 1.06rem; line-height: 1.62;
 }
 
@@ -444,4 +424,151 @@ a:hover { color: var(--color-accent); }
   .fl-bubble { height: 170vh; }
   .fl-sticky { justify-content: center; padding: 0 5vw; }
   .fl-card { max-width: 92vw; }
+}
+
+.table td { color: var(--color-bone); font-variant-numeric: tabular-nums; }
+.table tbody tr { transition: background var(--dur-fast) var(--ease-iris); }
+.table tbody tr:hover td { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.table tbody tr:hover td:first-child { box-shadow: inset 2px 0 0 var(--color-accent); }
+
+/* ════════════════════════════════════════════════════════════════════
+   FOREST ATMOSPHERE & MOTION — "iris dans le sous-bois"
+   Ambient layers + micro-interactions + the fill "iris bloom" moment.
+   All CSS-driven (no JS lib). Honours prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Ambient layer: drifting canopy light + understory vignette. Fixed,
+   behind everything, never intercepts clicks. */
+.ambiance { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--color-ink); }
+.ambiance .fog {
+  position: absolute; inset: -25%;
+  background:
+    radial-gradient(40% 32% at 18% 20%, color-mix(in srgb, var(--color-accent) 24%, transparent), transparent 70%),
+    radial-gradient(34% 28% at 80% 28%, color-mix(in srgb, var(--color-gold) 13%, transparent), transparent 70%),
+    radial-gradient(48% 42% at 68% 84%, color-mix(in srgb, var(--color-accent-2) 18%, transparent), transparent 72%);
+  filter: blur(22px);
+  animation: fogDrift 28s ease-in-out infinite alternate;
+}
+.ambiance .vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(125% 95% at 50% -5%, transparent 42%, color-mix(in srgb, var(--color-ink) 72%, transparent) 80%, var(--color-ink) 100%);
+}
+@keyframes fogDrift {
+  0%   { transform: translate3d(0,0,0) scale(1);          opacity: 0.85; }
+  50%  { transform: translate3d(2%, -1.5%, 0) scale(1.07); opacity: 1; }
+  100% { transform: translate3d(-1.5%, 1%, 0) scale(1.03); opacity: 0.8; }
+}
+
+/* Fireflies / pollen — tiny drifting glows rising through the canopy */
+.firefly { position: absolute; bottom: -2vh; border-radius: 50%; opacity: 0; will-change: transform, opacity; animation: floatUp linear infinite; }
+@keyframes floatUp {
+  0%   { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; }
+  12%  { opacity: var(--ff-max, 0.7); }
+  50%  { transform: translateY(-52vh) translateX(var(--ff-x, 14px)) scale(1); }
+  88%  { opacity: var(--ff-max, 0.7); }
+  100% { transform: translateY(-104vh) translateX(0) scale(0.5); opacity: 0; }
+}
+
+/* Live pulse dot — "streaming from Derive" */
+.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent-2); animation: livePulse 2.1s ease-out infinite; }
+@keyframes livePulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-2) 60%, transparent); }
+  70%  { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Staggered reveal — rows/cards unfurl like petals */
+@keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.reveal { opacity: 0; animation: riseIn var(--dur-slow) var(--ease-iris) forwards; }
+
+/* Spectrum shimmer sweep — for the hero premium/APR number */
+.shimmer {
+  background: linear-gradient(100deg,
+    var(--color-bone) 0%, var(--color-bone) 36%,
+    var(--color-spec-gold) 49%, var(--color-spec-violet) 60%,
+    var(--color-bone) 76%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmerSweep 5.5s ease-in-out infinite;
+}
+@keyframes shimmerSweep { 0%,100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
+
+/* Iris bloom — the fill success moment */
+.iris-bloom { display: grid; place-items: center; margin: 6px 0 10px; }
+.iris-bloom svg { width: 76px; height: 76px; overflow: visible; animation: bloomPop 720ms var(--ease-iris) both; }
+.iris-bloom .ripple { animation: rippleOut 950ms var(--ease-iris) both; }
+@keyframes bloomPop {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-22deg); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes rippleOut { 0% { opacity: 0.55; transform: scale(0.35); } 100% { opacity: 0; transform: scale(2.5); } }
+
+/* Respect reduced-motion: kill ambient + decorative loops */
+@media (prefers-reduced-motion: reduce) {
+  .ambiance .fog, .firefly, .shimmer, .live-dot { animation: none; }
+  .reveal { opacity: 1; animation: none; }
+  .iris-bloom svg, .iris-bloom .ripple { animation: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   RYSK TYPE & UX ADOPTION — elegant serif display + earn-table patterns
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Serif display only on LARGE headings (Bodoni is high-contrast; small sizes
+   stay in DM Sans for legibility). */
+.display, .h1, .prose h1, .landing-title, .title-serif {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.hero-num { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+
+/* Asset chip — colored token dot + ticker */
+.asset-chip { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; color: var(--color-bone); }
+.asset-chip .tok { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-family: var(--font-mono); color: #08140E; flex: none; }
+
+/* APR range cell (Rysk min–max) */
+.apr-range { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.apr-range .max { color: var(--color-accent); font-weight: 600; font-size: 15px; }
+.apr-range .sep { color: var(--color-muted); }
+.apr-range .min { color: var(--color-graphite); font-size: 12.5px; }
+
+/* Small per-row action button (Rysk "Earn on X") */
+.btn.sm { padding: 7px 15px; font-size: 13px; border-radius: var(--radius-sm); }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — phone layout
+   ════════════════════════════════════════════════════════════════════ */
+.title-serif { font-size: clamp(28px, 6vw, 46px); }
+
+@media (max-width: 640px) {
+  .container { padding: 6px 14px 80px; }
+
+  /* Nav wraps: brand + connect on top row, links scroll under */
+  .appnav { flex-wrap: wrap; gap: 10px 12px; padding: 12px 14px; }
+  .appnav-links { order: 3; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; }
+  .appnav-link { white-space: nowrap; }
+  .brand-logo { height: 22px; }
+
+  /* Headings + hero numbers scale down */
+  .title-serif { font-size: 28px !important; }
+  .hero-num { font-size: 36px !important; }
+
+  /* Stack any multi-column grids */
+  .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+
+  /* Tables scroll horizontally instead of squishing */
+  .table { font-size: 13px; }
+  .table th, .table td { padding: 9px 10px; }
+
+  /* Modal fills the screen comfortably */
+  .modal { padding: 18px; border-radius: var(--radius); }
+  .modal h3 { font-size: 19px; }
+
+  /* Docs/learn: drop the sticky TOC, single column */
+  .doc-layout { grid-template-columns: 1fr; gap: 24px; }
+
+  /* Lighten ambient cost on small/often-low-power devices */
+  .firefly { display: none; }
 }

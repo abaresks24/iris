@@ -6,6 +6,8 @@ import { useQueries } from "@tanstack/react-query";
 import { api, type PresetId } from "@/lib/api";
 import { pct, usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
+import { CountUp } from "./CountUp";
+import { TokenIcon } from "./TokenIcon";
 import { DepositModal } from "./DepositModal";
 
 interface Opp {
@@ -51,7 +53,10 @@ export function EarnExplorer() {
     queries: OPPS.map((o) => ({
       queryKey: ["strategies", o.preset, o.currency, 1],
       queryFn: () => api.strategies(o.preset, o.currency, 1),
-      staleTime: 30_000,
+      // Poll the live orderbook so APRs visibly move (the market-maker sim).
+      staleTime: 3_000,
+      refetchInterval: 6_000,
+      refetchIntervalInBackground: false,
     })),
   });
 
@@ -120,38 +125,61 @@ export function EarnExplorer() {
           <thead>
             <tr>
               <th style={{ cursor: "pointer" }} onClick={() => toggleSort("asset")}>Asset{caret("asset")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("type")}>Type{caret("type")}</th>
-              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("maxApr")}>Max APR{caret("maxApr")}</th>
-              <th>Min APR</th>
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("type")}>Strategy{caret("type")}</th>
+              <th style={{ cursor: "pointer" }} onClick={() => toggleSort("maxApr")}>{view[0]?.preset === "long_call" ? "Premium" : "APR"}{caret("maxApr")}</th>
               <th>Capacity</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {view.map((r) => (
+            {view.map((r, i) => (
               <tr
                 key={`${r.currency}-${r.preset}`}
-                style={{ cursor: "pointer" }}
+                className="reveal"
+                style={{ cursor: "pointer", animationDelay: `${i * 45}ms` }}
                 onClick={() => setActive(r)}
               >
-                <td style={{ fontWeight: 600, color: "var(--color-ink)" }}>{r.currency}</td>
+                <td>
+                  <span className="asset-chip">
+                    <TokenIcon currency={r.currency} size={22} />
+                    {r.currency}
+                  </span>
+                </td>
                 <td>{r.label}</td>
-                <td style={{ color: "var(--color-accent)", fontWeight: 600 }}>
+                <td>
                   {r.loading ? (
                     <IrisLoader size={14} />
                   ) : r.preset === "long_call" ? (
-                    r.prem != null ? usd(r.prem) : "—"
+                    <span className="apr-range">
+                      <span className="max"><CountUp value={r.prem} format={(n) => usd(n)} /></span>
+                      <span className="min">cost</span>
+                    </span>
                   ) : (
-                    pct(r.maxApr, 1)
+                    <span className="apr-range">
+                      <span className="min">{pct(r.minApr, 1)}</span>
+                      <span className="sep">–</span>
+                      <span className="max"><CountUp value={r.maxApr} format={(n) => pct(n, 1)} /></span>
+                    </span>
                   )}
                 </td>
-                <td>{r.loading ? "" : r.preset === "long_call" ? "premium" : pct(r.minApr, 1)}</td>
                 <td>
                   <div className="flex" style={{ gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 60, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
-                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--color-accent)" }} />
+                    <div style={{ flex: 1, minWidth: 56, height: 6, borderRadius: 999, background: "var(--color-surface)", border: "1px solid var(--color-hairline)" }}>
+                      <div style={{ width: `${r.capPct}%`, height: "100%", borderRadius: 999, background: "var(--spectrum)" }} />
                     </div>
                     <span className="small muted">{r.capPct}%</span>
                   </div>
+                </td>
+                <td className="right">
+                  <button
+                    className="btn sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActive(r);
+                    }}
+                  >
+                    {r.preset === "long_call" ? `Buy ${r.currency}` : `Earn on ${r.currency}`}
+                  </button>
                 </td>
               </tr>
             ))}

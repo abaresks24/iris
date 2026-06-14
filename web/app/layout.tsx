@@ -1,30 +1,24 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-import { Syne, Bodoni_Moda, DM_Sans, DM_Mono } from "next/font/google";
+import { DM_Sans, DM_Mono, Bodoni_Moda } from "next/font/google";
 import "./globals.css";
 
-const display = Syne({
+// Rysk's type system: DM Sans (body) + DM Mono (numbers) + an elegant
+// high-contrast serif for display (Rysk uses Bodoni Moda / Parabole).
+const sans = DM_Sans({
   subsets: ["latin"],
-  weight: ["700", "800"],
-  variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans-src",
 });
-
-// DA rysk.finance (bulles éducatives de la landing)
-const ryskSerif = Bodoni_Moda({
+const mono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono-src",
+});
+const display = Bodoni_Moda({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  variable: "--font-rysk-serif",
-});
-const ryskSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-rysk-sans",
-});
-const ryskMono = DM_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-rysk-mono",
+  style: ["normal", "italic"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -39,10 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${display.variable} ${ryskSerif.variable} ${ryskSans.variable} ${ryskMono.variable}`}
-    >
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -436,63 +436,63 @@ const STEPS: Step[] = [
   {
     kind: "bubble",
     n: "01",
-    title: "Une option, c'est quoi ?",
-    body: "Un contrat qui donne le droit — pas l'obligation — d'acheter ou de vendre un actif à un prix fixé d'avance, avant une date donnée.",
+    title: "What's an option?",
+    body: "A contract that gives you the right — not the obligation — to buy or sell an asset at a price fixed in advance, before a set date.",
   },
   {
     kind: "bubble",
     n: "02",
-    title: "La prime",
-    body: "Celui qui vend ce droit est payé tout de suite : la prime. C'est comme une assurance — tu encaisses aujourd'hui pour couvrir quelqu'un demain.",
+    title: "The premium",
+    body: "Whoever sells that right gets paid upfront: the premium. It's like insurance — you collect today to cover someone tomorrow.",
   },
   {
     kind: "bubble",
     n: "03",
-    title: "Call ou Put",
-    body: "Un call = le droit d'acheter (parier sur la hausse). Un put = le droit de vendre (se protéger d'une baisse). Deux outils, une même mécanique.",
+    title: "Call or Put",
+    body: "A call is the right to buy (betting on the upside). A put is the right to sell (protecting against a drop). Two tools, one mechanic.",
   },
   {
     kind: "bubble",
     n: "04",
-    title: "Pourquoi ça fait peur",
-    body: "Sur la plupart des plateformes : effet de levier, appels de marge, liquidations. Une option peut alors te coûter bien plus que ta mise.",
+    title: "Why it feels scary",
+    body: "On most platforms: leverage, margin calls, liquidations. An option can end up costing you far more than you put in.",
   },
   {
     kind: "bubble",
     n: "05",
-    title: "L'approche Iris",
-    body: "Une seule jambe, entièrement collatéralisée. Zéro marge, zéro liquidation. Le pire scénario est connu et plafonné dès le départ.",
+    title: "The Iris approach",
+    body: "A single leg, fully collateralised. Zero margin, zero liquidation. The worst case is known and capped from the very start.",
   },
   {
     kind: "bubble",
     n: "06",
     star: true,
     title: "Cash-Secured Put",
-    body: "Tu déposes de l'USDC et tu touches un rendement régulier. Pire cas : tu achètes l'actif moins cher qu'aujourd'hui. Notre produit phare.",
+    body: "Deposit USDC and earn a steady yield. Worst case: you buy the asset cheaper than it is today. Our flagship product.",
   },
   {
     kind: "bubble",
     n: "07",
     title: "Covered Call",
-    body: "Tu détiens déjà un actif ? Gagne un bonus en acceptant de le vendre un peu plus haut. Un loyer sur ce que tu possèdes déjà.",
+    body: "Already hold an asset? Earn a bonus by agreeing to sell it a little higher. Think of it as rent on what you already own.",
   },
   {
     kind: "bubble",
     n: "08",
     title: "Buy Call",
-    body: "Tu paries sur la hausse. Ton risque est plafonné à la prime payée — jamais un centime de plus, quoi qu'il arrive.",
+    body: "Bet on the upside. Your risk is capped at the premium you pay — never a cent more, whatever happens.",
   },
   {
     kind: "bubble",
     n: "09",
-    title: "Cross-chain, sans friction",
-    body: "Dépose n'importe quel token, depuis n'importe quelle chaîne. Il arrive en USDC sur Derive, prêt à travailler. Tu ne gères jamais la plomberie.",
+    title: "Cross-chain, frictionless",
+    body: "Deposit any token, from any chain. It lands as USDC on Derive, ready to work. You never touch the plumbing.",
   },
   {
     kind: "bubble",
     n: "10",
-    title: "Sous le capot",
-    body: "Tes ordres sont matchés sur l'orderbook permissionless de Derive, puis réglés on-chain. Tout est transparent et vérifiable.",
+    title: "Under the hood",
+    body: "Your orders are matched on Derive's permissionless orderbook, then settled on-chain. Fully transparent and verifiable.",
   },
   { kind: "cta" },
 ];
@@ -508,8 +508,8 @@ function Overlay() {
               <h1 className="fl-title">
                 <span className="grad">Iris</span>
               </h1>
-              <p className="fl-lede">Les options, expliquées simplement.</p>
-              <p className="fl-hint">descends le chemin ↓</p>
+              <p className="fl-lede">Options, explained simply.</p>
+              <p className="fl-hint">scroll to walk the path ↓</p>
             </section>
           );
         if (step.kind === "cta")
@@ -517,10 +517,10 @@ function Overlay() {
             <section key={i} className="fl-step fl-cta">
               <img src="/iris_turquoise_contour_decoupe.svg" alt="" className="fl-cta-iris" />
               <h2 className="fl-cta-title">
-                Prêt à <span className="grad">faire travailler</span> ton capital ?
+                Ready to put your <span className="grad">capital to work</span>?
               </h2>
               <p className="fl-lede">
-                Single-leg, entièrement collatéralisé. Pas de marge, pas de liquidation.
+                Single-leg, fully collateralised. No margin, no liquidations.
               </p>
               <div className="fl-actions">
                 <Link href="/docs" className="btn ghost lg">Docs</Link>
@@ -541,7 +541,7 @@ function Overlay() {
               <div className="fl-card">
                 <span className="fl-tag">
                   <span className="fl-num">{step.n}</span>
-                  {step.star && <span className="fl-star">★ phare</span>}
+                  {step.star && <span className="fl-star">★ flagship</span>}
                 </span>
                 <h3 className="fl-card-title">{step.title}</h3>
                 <p className="fl-card-body">{step.body}</p>
