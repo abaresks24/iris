@@ -63,6 +63,7 @@ export function DepositModal({
 
   async function confirm() {
     if (!selected) return;
+    if (!(amount > 0)) { setStatus("error"); setMessage("Enter an amount greater than 0"); return; }
     setStatus("sending");
     setMessage("");
     setArc(null);
@@ -185,10 +186,12 @@ export function DepositModal({
               <input
                 className="input"
                 type="number"
-                min={1}
+                min={0.001}
+                step="any"
                 value={amount}
-                onChange={(e) => setAmount(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
               />
+              <span className="muted small">Min 0.001 · fractional sizes supported</span>
             </div>
 
             <div className="flex between small">
