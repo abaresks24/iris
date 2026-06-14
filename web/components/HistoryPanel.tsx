@@ -7,15 +7,15 @@ import { usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { TokenIcon } from "./TokenIcon";
 
-/** The connected wallet's own activity — fills booked on-chain on Arc. */
+/** The connected wallet's own activity — positions opened on Arc. */
 export function HistoryPanel() {
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
   const trader = wallets[0]?.address;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["arcPositions", trader],
-    queryFn: () => api.arcPositions(trader!),
+    queryKey: ["positions", trader],
+    queryFn: () => api.positions(trader!),
     enabled: !!trader,
     refetchInterval: 10000,
   });
@@ -25,12 +25,12 @@ export function HistoryPanel() {
     return (
       <div className="placeholder">
         <h3>Connect your wallet</h3>
-        <p>Your fills will appear here once you connect and trade.</p>
+        <p>Your activity will appear here once you connect and trade.</p>
       </div>
     );
   if (isLoading) return <div className="notice"><IrisLoader /> Loading your activity…</div>;
 
-  const fills = [...(data?.positions ?? [])].sort((a, b) => b.recordedAt - a.recordedAt);
+  const fills = data?.positions ?? [];
   if (fills.length === 0)
     return (
       <div className="placeholder">
@@ -48,30 +48,30 @@ export function HistoryPanel() {
             <th>Asset</th>
             <th>Strategy</th>
             <th>Premium</th>
-            <th className="right">Settlement</th>
+            <th className="right">On-chain</th>
           </tr>
         </thead>
         <tbody>
-          {fills.map((f) => (
-            <tr key={f.id}>
-              <td>{f.recordedAt ? new Date(f.recordedAt * 1000).toLocaleString() : "—"}</td>
+          {fills.map((f, i) => (
+            <tr key={`${f.source}-${i}`}>
+              <td>{f.time ? new Date(f.time * 1000).toLocaleString() : "—"}</td>
               <td>
                 <span className="asset-chip">
-                  <TokenIcon currency={f.instrument.split("-")[0]} size={20} />
-                  {f.instrument}
+                  <TokenIcon currency={f.asset} size={20} />
+                  {f.label}
                 </span>
               </td>
               <td>{f.kind}</td>
               <td className="ok">{usd(f.premium)}</td>
               <td className="right">
                 <a
-                  href={`${data!.explorer}/address/${data!.contract}`}
+                  href={`${data!.explorer}/address/${data!.vault}`}
                   target="_blank"
                   rel="noreferrer"
                   className="mono small"
                   style={{ color: "var(--color-accent-2)" }}
                 >
-                  on-chain ↗
+                  {f.real ? "↗" : "recorded ↗"}
                 </a>
               </td>
             </tr>
