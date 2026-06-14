@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http } from "wagmi";
 import { arbitrum, base, mainnet, optimism } from "viem/chains";
 import { deriveChain } from "@/lib/chains";
+import { arcTestnet } from "@/lib/arc/vault";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "";
 
@@ -14,8 +15,9 @@ const FundingContext = createContext({ privyEnabled: false });
 export const useFunding = () => useContext(FundingContext);
 
 const wagmiConfig = createConfig({
-  chains: [deriveChain, arbitrum, optimism, base, mainnet],
+  chains: [arcTestnet, deriveChain, arbitrum, optimism, base, mainnet],
   transports: {
+    [arcTestnet.id]: http(),
     [deriveChain.id]: http(),
     [arbitrum.id]: http(),
     [optimism.id]: http(),
@@ -53,7 +55,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           // wallets (Rabby/MetaMask) can fail to connect if forced onto the
           // obscure Derive Chain (957) on login; keep it only as supported.
           defaultChain: mainnet,
-          supportedChains: [mainnet, arbitrum, optimism, base, deriveChain],
+          supportedChains: [mainnet, arbitrum, optimism, base, arcTestnet, deriveChain],
         }}
       >
         <QueryClientProvider client={queryClient}>

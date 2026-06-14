@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallets } from "@privy-io/react-auth";
+import { useAccount, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
 import { api, type ArcSettlement, type Economics, type PresetId } from "@/lib/api";
+import {
+  arcTestnet, VAULT_ADDRESS, USDC_ADDRESS, VAULT_ABI, USDC_ABI, MARKET_ID,
+  toFeed8, toSize18, ARC_EXPLORER,
+} from "@/lib/arc/vault";
 import { usd, num, pct, days } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 import { IrisBloom } from "./IrisBloom";
@@ -32,8 +37,13 @@ export function DepositModal({
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const [arc, setArc] = useState<ArcSettlement | null>(null);
+  const [step, setStep] = useState("");
   const { wallets } = useWallets();
   const trader = wallets[0]?.address;
+  const { address } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
+  const arcClient = usePublicClient({ chainId: arcTestnet.id });
 
   const { data, isLoading } = useQuery({
     queryKey: ["strategies", preset, currency, 1],
@@ -55,17 +65,86 @@ export function DepositModal({
     if (!selected) return;
     setStatus("sending");
     setMessage("");
+    setArc(null);
     try {
-      const res = await api.trade({ preset, instrumentName: selected.instrumentName, amount, trader });
-      setStatus("done");
-      const id =
-        (res.order as any)?.order?.order_id ?? (res.order as any)?.order_id ?? "submitted";
-      setMessage(String(id));
-      if (res.arcSettlement && "txHash" in res.arcSettlement) setArc(res.arcSettlement);
-    } catch (e) {
+      if (preset === "cash_secured_put") await runVaultCSP(selected);
+      else await runMirror(selected);
+    } catch (e: any) {
       setStatus("error");
-      setMessage(e instanceof Error ? e.message : "Order failed");
+      setStep("");
+      setMessage(e?.shortMessage || (e instanceof Error ? e.message : "Order failed"));
     }
+  }
+
+  // Income/buy presets the vault doesn't custody yet → Derive matching + Arc record.
+  async function runMirror(sel: Economics) {
+    const res = await api.trade({ preset, instrumentName: sel.instrumentName, amount, trader });
+    setStatus("done");
+    const id = (res.order as any)?.order?.order_id ?? (res.order as any)?.order_id ?? "submitted";
+    setMessage(String(id));
+    if (res.arcSettlement && "txHash" in res.arcSettlement) setArc(res.arcSettlement);
+  }
+
+  // Cash-Secured Put → REAL on-chain on the Arc vault: lock USDC collateral,
+  // receive premium, all from the user's wallet. Derive supplied the price.
+  async function runVaultCSP(sel: Economics) {
+    const acct = (address ?? trader) as `0x${string}` | undefined;
+    if (!acct) throw new Error("Connect your wallet first");
+    if (!arcClient) throw new Error("Arc network unavailable");
+    const marketId = MARKET_ID[currency] ?? 0;
+    const strike = toFeed8(sel.strike);
+    const size = toSize18(amount);
+    const expiry = BigInt(Math.floor(sel.expiry));
+
+    setStep("Switching to Arc…");
+    await switchChainAsync({ chainId: arcTestnet.id });
+
+    setStep("Topping up gas…");
+    await fetch("/api/gas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: acct }),
+    }).catch(() => {});
+
+    const [collateralWei] = (await arcClient.readContract({
+      address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "quoteCashSecuredPut",
+      args: [marketId, strike, size, expiry],
+    })) as [bigint, bigint];
+
+    const bal = (await arcClient.readContract({
+      address: USDC_ADDRESS, abi: USDC_ABI, functionName: "balanceOf", args: [acct],
+    })) as bigint;
+    if (bal < collateralWei) {
+      setStep("Minting test USDC…");
+      const h = await writeContractAsync({
+        address: USDC_ADDRESS, abi: USDC_ABI, functionName: "mint",
+        args: [acct, collateralWei], chainId: arcTestnet.id,
+      });
+      await arcClient.waitForTransactionReceipt({ hash: h });
+    }
+
+    const allowance = (await arcClient.readContract({
+      address: USDC_ADDRESS, abi: USDC_ABI, functionName: "allowance", args: [acct, VAULT_ADDRESS],
+    })) as bigint;
+    if (allowance < collateralWei) {
+      setStep("Approving USDC…");
+      const h = await writeContractAsync({
+        address: USDC_ADDRESS, abi: USDC_ABI, functionName: "approve",
+        args: [VAULT_ADDRESS, collateralWei], chainId: arcTestnet.id,
+      });
+      await arcClient.waitForTransactionReceipt({ hash: h });
+    }
+
+    setStep("Opening position…");
+    const hash = await writeContractAsync({
+      address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "openCashSecuredPut",
+      args: [marketId, strike, size, expiry], chainId: arcTestnet.id,
+    });
+    await arcClient.waitForTransactionReceipt({ hash });
+
+    setStep("");
+    setStatus("done");
+    setMessage(`+${usd(upfront)} premium`);
+    setArc({ txHash: hash, explorerUrl: `${ARC_EXPLORER}/tx/${hash}`, contract: VAULT_ADDRESS, chainId: arcTestnet.id });
   }
 
   return (
@@ -159,13 +238,19 @@ export function DepositModal({
 
             <div className="divider" />
 
-            {status === "done" ? (
+            {status === "sending" ? (
+              <p className="muted small flex" style={{ gap: 8 }}><IrisLoader size={14} /> {step || "Submitting…"}</p>
+            ) : status === "done" ? (
               <>
                 <IrisBloom />
-                <p className="ok small" style={{ textAlign: "center" }}>✓ {isBuy ? "Bought" : "Earning"} on Derive · matched & filled <span className="mono">{message}</span></p>
+                <p className="ok small" style={{ textAlign: "center" }}>
+                  {preset === "cash_secured_put"
+                    ? <>✓ Position opened on Arc · <span className="mono">{message}</span></>
+                    : <>✓ {isBuy ? "Bought" : "Earning"} on Derive · <span className="mono">{message}</span></>}
+                </p>
                 {arc ? (
-                  <p className="ok small" style={{ marginTop: 6 }}>
-                    ⛓ Settled on-chain on Arc ·{" "}
+                  <p className="ok small" style={{ marginTop: 6, textAlign: "center" }}>
+                    ⛓ {preset === "cash_secured_put" ? "Collateral locked + premium paid on Arc" : "Settled on-chain on Arc"} ·{" "}
                     <a href={arc.explorerUrl} target="_blank" rel="noreferrer" className="mono" style={{ color: "var(--color-accent-2)" }}>
                       {arc.txHash.slice(0, 10)}…{arc.txHash.slice(-6)} ↗
                     </a>
