@@ -7,7 +7,7 @@ import { useAccount, useSwitchChain, useWriteContract, usePublicClient } from "w
 import { api, type ArcSettlement, type Economics, type PresetId } from "@/lib/api";
 import {
   arcTestnet, VAULT_ADDRESS, USDC_ADDRESS, VAULT_ABI, USDC_ABI, MARKET_ID,
-  toFeed8, toSize18, ARC_EXPLORER,
+  UNDERLYING_BY_CURRENCY, toFeed8, toSize18, ARC_EXPLORER,
 } from "@/lib/arc/vault";
 import { usd, num, pct, days } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
@@ -67,7 +67,7 @@ export function DepositModal({
     setMessage("");
     setArc(null);
     try {
-      if (preset === "cash_secured_put") await runVaultCSP(selected);
+      if (preset === "cash_secured_put" || preset === "covered_call") await runVault(selected);
       else await runMirror(selected);
     } catch (e: any) {
       setStatus("error");
@@ -85,16 +85,20 @@ export function DepositModal({
     if (res.arcSettlement && "txHash" in res.arcSettlement) setArc(res.arcSettlement);
   }
 
-  // Cash-Secured Put → REAL on-chain on the Arc vault: lock USDC collateral,
-  // receive premium, all from the user's wallet. Derive supplied the price.
-  async function runVaultCSP(sel: Economics) {
+  // CSP / Covered Call → REAL on-chain on the Arc vault: lock collateral
+  // (USDC for a put, the underlying for a call), receive premium, from the
+  // user's wallet. Derive supplied the price.
+  async function runVault(sel: Economics) {
     const acct = (address ?? trader) as `0x${string}` | undefined;
     if (!acct) throw new Error("Connect your wallet first");
     if (!arcClient) throw new Error("Arc network unavailable");
+    const isCSP = preset === "cash_secured_put";
     const marketId = MARKET_ID[currency] ?? 0;
     const strike = toFeed8(sel.strike);
     const size = toSize18(amount);
     const expiry = BigInt(Math.floor(sel.expiry));
+    const collToken = isCSP ? USDC_ADDRESS : (UNDERLYING_BY_CURRENCY[currency] ?? USDC_ADDRESS);
+    const collLabel = isCSP ? "USDC" : `test ${currency}`;
 
     setStep("Switching to Arc…");
     await switchChainAsync({ chainId: arcTestnet.id });
@@ -105,30 +109,30 @@ export function DepositModal({
       body: JSON.stringify({ to: acct }),
     }).catch(() => {});
 
-    const [collateralWei] = (await arcClient.readContract({
-      address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "quoteCashSecuredPut",
-      args: [marketId, strike, size, expiry],
-    })) as [bigint, bigint];
+    const [collateralWei] = (isCSP
+      ? await arcClient.readContract({ address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "quoteCashSecuredPut", args: [marketId, strike, size, expiry] })
+      : await arcClient.readContract({ address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "quoteCoveredCall", args: [marketId, size, expiry] })
+    ) as [bigint, bigint];
 
     const bal = (await arcClient.readContract({
-      address: USDC_ADDRESS, abi: USDC_ABI, functionName: "balanceOf", args: [acct],
+      address: collToken, abi: USDC_ABI, functionName: "balanceOf", args: [acct],
     })) as bigint;
     if (bal < collateralWei) {
-      setStep("Minting test USDC…");
+      setStep(`Minting ${collLabel}…`);
       const h = await writeContractAsync({
-        address: USDC_ADDRESS, abi: USDC_ABI, functionName: "mint",
+        address: collToken, abi: USDC_ABI, functionName: "mint",
         args: [acct, collateralWei], chainId: arcTestnet.id,
       });
       await arcClient.waitForTransactionReceipt({ hash: h });
     }
 
     const allowance = (await arcClient.readContract({
-      address: USDC_ADDRESS, abi: USDC_ABI, functionName: "allowance", args: [acct, VAULT_ADDRESS],
+      address: collToken, abi: USDC_ABI, functionName: "allowance", args: [acct, VAULT_ADDRESS],
     })) as bigint;
     if (allowance < collateralWei) {
-      setStep("Approving USDC…");
+      setStep(`Approving ${collLabel}…`);
       const h = await writeContractAsync({
-        address: USDC_ADDRESS, abi: USDC_ABI, functionName: "approve",
+        address: collToken, abi: USDC_ABI, functionName: "approve",
         args: [VAULT_ADDRESS, collateralWei], chainId: arcTestnet.id,
       });
       await arcClient.waitForTransactionReceipt({ hash: h });
@@ -136,7 +140,8 @@ export function DepositModal({
 
     setStep("Opening position…");
     const hash = await writeContractAsync({
-      address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "openCashSecuredPut",
+      address: VAULT_ADDRESS, abi: VAULT_ABI,
+      functionName: isCSP ? "openCashSecuredPut" : "openCoveredCall",
       args: [marketId, strike, size, expiry], chainId: arcTestnet.id,
     });
     await arcClient.waitForTransactionReceipt({ hash });
@@ -244,13 +249,13 @@ export function DepositModal({
               <>
                 <IrisBloom />
                 <p className="ok small" style={{ textAlign: "center" }}>
-                  {preset === "cash_secured_put"
+                  {preset !== "long_call"
                     ? <>✓ Position opened on Arc · <span className="mono">{message}</span></>
                     : <>✓ {isBuy ? "Bought" : "Earning"} on Derive · <span className="mono">{message}</span></>}
                 </p>
                 {arc ? (
                   <p className="ok small" style={{ marginTop: 6, textAlign: "center" }}>
-                    ⛓ {preset === "cash_secured_put" ? "Collateral locked + premium paid on Arc" : "Settled on-chain on Arc"} ·{" "}
+                    ⛓ {preset !== "long_call" ? "Collateral locked + premium paid on Arc" : "Settled on-chain on Arc"} ·{" "}
                     <a href={arc.explorerUrl} target="_blank" rel="noreferrer" className="mono" style={{ color: "var(--color-accent-2)" }}>
                       {arc.txHash.slice(0, 10)}…{arc.txHash.slice(-6)} ↗
                     </a>
