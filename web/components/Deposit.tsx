@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useAccount, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
 import { arcTestnet, VAULT_ADDRESS, USDC_ADDRESS, USDC_ABI, toUsdc6 } from "@/lib/arc/vault";
+import { useArcBalance } from "@/lib/arc/useArcBalance";
+import { usd } from "@/lib/format";
 import { IrisLoader } from "./IrisLoader";
 
 const MAX_UINT = (2n ** 256n - 1n);
@@ -21,6 +23,7 @@ export function Deposit({ variant = "btn" }: { variant?: "btn" | "btn secondary"
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const arc = usePublicClient({ chainId: arcTestnet.id });
+  const { usdc: usdcBal, refetch: refetchBal } = useArcBalance();
 
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("10000");
@@ -47,6 +50,7 @@ export function Deposit({ variant = "btn" }: { variant?: "btn" | "btn secondary"
       h = await writeContractAsync({ address: USDC_ADDRESS, abi: USDC_ABI, functionName: "approve", args: [VAULT_ADDRESS, MAX_UINT], chainId: arcTestnet.id });
       await arc.waitForTransactionReceipt({ hash: h });
       setStep(""); setDone(true);
+      refetchBal();
     } catch (e: any) {
       setStep("");
       setErr(e?.shortMessage || (e instanceof Error ? e.message : "Failed"));
@@ -66,7 +70,11 @@ export function Deposit({ variant = "btn" }: { variant?: "btn" | "btn secondary"
               Fund your wallet on Arc in one click — we top up gas, mint test USDC,
               and pre-approve the vault so opening a position is a single tx.
             </p>
-            <div className="field" style={{ margin: "16px 0" }}>
+            <div className="flex between small" style={{ marginTop: 10 }}>
+              <span className="muted">Your balance</span>
+              <b>{usdcBal == null ? "…" : usd(usdcBal)} test USDC</b>
+            </div>
+            <div className="field" style={{ margin: "12px 0 16px" }}>
               <label>Amount (test USDC)</label>
               <input className="input" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
             </div>
