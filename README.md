@@ -10,6 +10,23 @@ options strategy presented as a plain-English yield product.
 > Built solo at **ETHGlobal NYC** (June 2026). We ride Derive's existing
 > liquidity and users (no cold-start) and add the onboarding + UX layer.
 
+## Architecture — hybrid matching + settlement
+
+Derive does the **matching** off-chain (order signing, orderbook, a maker that
+auto-fills) — that all works. But Derive's *testnet* on-chain settlement reverts
+inside an unmaintained price feed, so positions can't finalise there. We
+reproduce the one broken piece — **settlement** — in our own
+[`DeriveSettlement`](contracts/src/DeriveSettlement.sol) contract on **Circle
+Arc** (Chainlink feeds live), where the settlement tx succeeds.
+
+```
+user order → signed + matched on Derive (real fill) → backend records the fill
+in DeriveSettlement.record() on Arc → real settlement tx (status 1)
+```
+
+- **Live:** https://web-ochre-rho-41.vercel.app  (auto-deployed from `main`)
+- **DeriveSettlement (Arc testnet, chain 5042002):** `0xB01cfE8dA5e46c6c4754d196E90De1f93308d0f8`
+
 ---
 
 ## Why this exists
